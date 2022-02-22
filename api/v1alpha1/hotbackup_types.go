@@ -24,6 +24,10 @@ type HotBackupSpec struct {
 	//	@hourly                | Run once an hour, beginning of hour        | 0 * * * *
 	// +optional
 	Schedule string `json:"schedule"`
+
+	// URL of the bucket to download HotBackup folders.
+	// +optional
+	BucketURL string `json:"bucket"`
 }
 
 //+kubebuilder:object:root=true

@@ -68,6 +68,23 @@ type HazelcastSpec struct {
 	// Persistence configuration
 	// +optional
 	Persistence HazelcastPersistenceConfiguration `json:"persistence,omitempty"`
+
+	// Backup Agent configuration
+	// +optional
+	Backup BackupAgentConfiguration `json:"backup,omitempty"`
+}
+
+
+type BackupAgentConfiguration struct {
+
+	// Image of Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
+	// +kubebuilder:default:="docker.io/hazelcast/platform-operator-agent"
+	// +optional
+	AgentImage string `json:"agentImage"`
+
+	// Name of the secret with credentials for cloud providers.
+	// +optional
+	BucketSecret string `json:"bucketSecret"`
 }
 
 // HazelcastPersistenceConfiguration contains the configuration for Hazelcast Persistence and K8s storage.
@@ -249,6 +266,11 @@ func (c *HazelcastPersistenceConfiguration) IsEnabled() bool {
 // Returns true if hostPath is enabled.
 func (c *HazelcastPersistenceConfiguration) UseHostPath() bool {
 	return c.HostPath != ""
+}
+
+// Returns true if Backup Agent configuration is specified.
+func (c *BackupAgentConfiguration) IsEnabled() bool {
+	return !(*c == (BackupAgentConfiguration{}))
 }
 
 // HazelcastStatus defines the observed state of Hazelcast

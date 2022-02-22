@@ -49,6 +49,17 @@ spec:
           spec:
             description: HazelcastSpec defines the desired state of Hazelcast
             properties:
+              backup:
+                description: Backup Agent configuration
+                properties:
+                  agentImage:
+                    default: docker.io/hazelcast/platform-operator-agent
+                    description: Image of Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
+                    type: string
+                  bucketSecret:
+                    description: Name of the secret with credentials for cloud providers.
+                    type: string
+                type: object
               clusterName:
                 default: dev
                 description: Name of the Hazelcast cluster.
