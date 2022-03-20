@@ -74,13 +74,17 @@ type HazelcastSpec struct {
 	Backup BackupAgentConfiguration `json:"backup,omitempty"`
 }
 
-
 type BackupAgentConfiguration struct {
 
-	// Image of Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
+	// Repository to pull Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
 	// +kubebuilder:default:="docker.io/hazelcast/platform-operator-agent"
 	// +optional
-	AgentImage string `json:"agentImage"`
+	AgentRepository string `json:"agentRepository,omitempty"`
+
+	// Version of Hazelcast Platform Operator Agent.
+	// +kubebuilder:default:="1.0.0"
+	// +optional
+	AgentVersion string `json:"agentVersion,omitempty"`
 
 	// Name of the secret with credentials for cloud providers.
 	// +optional
@@ -367,4 +371,8 @@ func (h *Hazelcast) ClusterScopedName() string {
 func (h *Hazelcast) ExternalAddressEnabled() bool {
 	return h.Spec.ExposeExternally.IsEnabled() &&
 		h.Spec.ExposeExternally.DiscoveryServiceType == corev1.ServiceTypeLoadBalancer
+}
+
+func (h *Hazelcast) AgentDockerImage() string {
+	return fmt.Sprintf("%s:%s", h.Spec.Backup.AgentRepository, h.Spec.Backup.AgentVersion)
 }

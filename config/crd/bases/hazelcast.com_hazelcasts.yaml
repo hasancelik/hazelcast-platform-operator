@@ -52,9 +52,13 @@ spec:
               backup:
                 description: Backup Agent configuration
                 properties:
-                  agentImage:
+                  agentRepository:
                     default: docker.io/hazelcast/platform-operator-agent
-                    description: Image of Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
+                    description: Repository to pull Hazelcast Platform Operator Agent(https://github.com/hazelcast/platform-operator-agent)
+                    type: string
+                  agentVersion:
+                    default: 1.0.0
+                    description: Version of Hazelcast Platform Operator Agent.
                     type: string
                   bucketSecret:
                     description: Name of the secret with credentials for cloud providers.

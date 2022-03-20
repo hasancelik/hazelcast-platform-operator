@@ -46,6 +46,12 @@ const (
 
 	// PersistenceVolumeName is the name the Persistence Volume Claim used in Persistence configuration.
 	PersistenceVolumeName = "hot-restart-persistence"
+
+	BackupAgent                 = "backup-agent"
+	BucketSecret                = "br-secret"
+	BucketDataS3AccessKeyID     = "access-key-id"
+	BucketDataS3SecretAccessKey = "secret-access-key"
+	BucketDataS3Region          = "region"
 )
 
 // Hazelcast default configurations
@@ -98,4 +104,10 @@ const (
 
 	// WebhookConfigurationName is the name of the webhook configuration.
 	WebhookConfiguration = "mutating-webhook-configuration"
+)
+
+// Backup&Restore agent default configurations
+const (
+	// DefaultAgentPort Backup&Restore agent default port
+	DefaultAgentPort = 8080
 )

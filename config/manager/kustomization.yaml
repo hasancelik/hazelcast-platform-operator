@@ -7,9 +7,15 @@ generatorOptions:
   disableNameSuffixHash: true
 images:
 - name: controller
-  newName: hazelcast/hazelcast-platform-operator
-  newTag: latest-snapshot
+  newName: hz-operator-dev
 patchesStrategicMerge:
 - manager_webhook_patch.yaml
 configurations:
 - kustomizeconfig.yaml
+patches:
+- path: disable_phone_home.yaml
+  target:
+    kind: Deployment
+- path: remove_security_context.yaml
+  target:
+    kind: Deployment
