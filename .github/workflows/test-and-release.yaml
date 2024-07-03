@@ -101,7 +101,6 @@ jobs:
           LATEST_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.version')
           STABLE_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.available_versions | map(select(.version | contains("snapshot") | not)) | .[0].version')
           
-          kubectl create secret generic hazelcast-license-key --from-literal=license-key=${{ env.HZ_LICENSE_KEY }}
           helm repo add hazelcast https://hazelcast-charts.s3.amazonaws.com && \
           helm repo update && \
           helm install operator hazelcast/hazelcast-platform-operator --version=$STABLE_VERSION --set=installCRDs=true --set=phoneHomeEnabled=false --wait
