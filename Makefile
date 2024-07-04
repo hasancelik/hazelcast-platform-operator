@@ -251,16 +251,13 @@ E2E_TEST_LABELS:=$(E2E_TEST_LABELS) && !cluster_scope
 endif
 
 test-e2e-split-kind: generate ginkgo ## Run end-to-end tests on Kind
-	$(GINKGO) -r --compilers=2 --output-interceptor-mode=none --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_KIND_PARALLEL_PROCESSES) --flake-attempts 2 --trace --label-filter="(kind && shard$(SHARD_ID)) && $(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS)
+	$(GINKGO) -r --compilers=2 --output-interceptor-mode=none --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_KIND_PARALLEL_PROCESSES) --flake-attempts 2 --trace --label-filter="(kind && shard$(SHARD_ID)) && $(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS) -storage-class "$(STORAGE_CLASS)"
 
 test-e2e: generate ginkgo ## Run end-to-end tests
-	$(GINKGO) -r --keep-going --output-interceptor-mode=none --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_PARALLEL_PROCESSES) --trace --label-filter="$(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 120m --flake-attempts 2 $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -deployNamespace "$(WATCHED_NAMESPACES)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)"
+	$(GINKGO) -r --keep-going --output-interceptor-mode=none --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_PARALLEL_PROCESSES) --trace --label-filter="$(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 120m --flake-attempts 2 $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -deployNamespace "$(WATCHED_NAMESPACES)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -storage-class "$(STORAGE_CLASS)"
 
 test-ph: generate ginkgo ## Run phone-home tests
 	$(GINKGO) -r --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --trace --tags $(GO_BUILD_TAGS) --v --timeout 40m --output-interceptor-mode=none $(GINKGO_TEST_FLAGS) ./test/ph -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -eventually-timeout 8m  -delete-timeout 8m
-
-test-soak: generate ginkgo ## Run soak tests
-	$(GINKGO) -r --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs 1 --trace --label-filter="soak" --tags $(GO_BUILD_TAGS) --v --timeout 1500m --flake-attempts 1 --output-interceptor-mode=none $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS)
 
 test-e2e-focus: generate ginkgo ## Run focused end-to-end tests
 	$(GINKGO) --trace --tags $(GO_BUILD_TAGS) -v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS)
@@ -408,7 +405,7 @@ olm-deploy: opm operator-sdk ## Deploying Operator with OLM bundle. Available mo
 
 	$(KUBECTL) apply -f cn-catalog.yaml
 
-	echo -e "kind: OperatorGroup\napiVersion: operators.coreos.com/v1\nmetadata:\n   name: hazelcast-group\n   namespace: hazelcast\nspec:\n   targetNamespaces:\n     - test-operator-ee" > cn-group.yaml
+	echo -e "kind: OperatorGroup\napiVersion: operators.coreos.com/v1\nmetadata:\n   name: hazelcast-group\n   namespace: hazelcast\nspec:\n   targetNamespaces:\n     - test-operator" > cn-group.yaml
 
 	$(KUBECTL) apply -f cn-group.yaml
 

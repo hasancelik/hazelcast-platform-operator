@@ -74,7 +74,7 @@ jobs:
       gh_run_id: ${{ github.run_id }}
       gh_run_number: ${{ github.run_number }}
       gh_sha: ${{ github.sha }}
-      namespaces: "test-operator-ee"
+      namespaces: "test-operator"
 
   get-image:
     name: Get Image
@@ -137,6 +137,7 @@ jobs:
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       RELEASE_NAME: hp-${{ github.run_id }}
       IMG: ${{ needs.get-image.outputs.IMG }}
+      STORAGE_CLASS: standard-rwo
 
     steps:
       - name: Checkout
@@ -246,7 +247,7 @@ jobs:
       - name: Run Hazelcast E2E tests at GKE
         id: e2e-test
         run: |
-          make test-e2e NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=istio
+          make test-e2e NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=istio STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Clean up after Tests
         if: always()
@@ -283,7 +284,7 @@ jobs:
     with:
       cluster_name: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       cluster_type: gke-istio
-      namespaces: "test-operator-ee,grafana"
+      namespaces: "test-operator,grafana"
 
   delete-cluster:
     name: Delete GKE cluster

@@ -16,6 +16,7 @@ import (
 var (
 	hazelcastVersion = flag.String("hazelcast-version", naming.HazelcastVersion, "Default Hazelcast version used in e2e tests")
 	hazelcastEERepo  = flag.String("hazelcast-ee-repo", naming.HazelcastEERepo, "Enterprise Hazelcast repository used in e2e tests")
+	storageClass     = flag.String("storage-class", "", "Storage class name to be used with different cloud providers")
 )
 
 var (
@@ -157,8 +158,9 @@ var (
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
 					ClusterDataRecoveryPolicy: hazelcastcomv1alpha1.FullRecovery,
 					PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-						AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						RequestStorage: &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						RequestStorage:   &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+						StorageClassName: storageClass,
 					},
 				},
 			},
@@ -174,8 +176,9 @@ var (
 			LoggingLevel:         hazelcastcomv1alpha1.LoggingLevelDebug,
 			CPSubsystem: &hazelcastcomv1alpha1.CPSubsystem{
 				PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-					AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					RequestStorage: &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					RequestStorage:   &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+					StorageClassName: storageClass,
 				},
 			},
 		}
@@ -190,8 +193,9 @@ var (
 			LoggingLevel:         hazelcastcomv1alpha1.LoggingLevelDebug,
 			Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
 				PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-					AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					RequestStorage: &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					RequestStorage:   &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+					StorageClassName: storageClass,
 				},
 			},
 			CPSubsystem: &hazelcastcomv1alpha1.CPSubsystem{},
@@ -334,8 +338,9 @@ var (
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
 					ClusterDataRecoveryPolicy: hazelcastcomv1alpha1.FullRecovery,
 					PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-						AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						RequestStorage: resource.NewQuantity(9*2^20, resource.BinarySI),
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						RequestStorage:   resource.NewQuantity(9*2^20, resource.BinarySI),
+						StorageClassName: storageClass,
 					},
 				},
 			},
@@ -366,8 +371,9 @@ var (
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
 					ClusterDataRecoveryPolicy: hazelcastcomv1alpha1.FullRecovery,
 					PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-						AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						RequestStorage: resource.NewQuantity(9*2^20, resource.BinarySI),
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						RequestStorage:   resource.NewQuantity(9*2^20, resource.BinarySI),
+						StorageClassName: storageClass,
 					},
 					Restore: hazelcastcomv1alpha1.RestoreConfiguration{
 						HotBackupResourceName: hbn,
@@ -494,8 +500,9 @@ var (
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
 					ClusterDataRecoveryPolicy: hazelcastcomv1alpha1.FullRecovery,
 					PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-						AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						RequestStorage: &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						RequestStorage:   &[]resource.Quantity{resource.MustParse("8Gi")}[0],
+						StorageClassName: storageClass,
 					},
 				},
 				SQL: &hazelcastcomv1alpha1.SQL{
@@ -934,7 +941,8 @@ var (
 					{
 						Name: deviceName,
 						PVC: &hazelcastcomv1alpha1.PvcConfiguration{
-							AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+							AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+							StorageClassName: storageClass,
 						},
 					},
 				},

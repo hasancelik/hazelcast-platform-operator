@@ -85,10 +85,11 @@ jobs:
           - watchedNS: "another-ns"
             testSuiteLabel: "multi_namespace"
     env:
-      NAMESPACE: kind-test-operator-ee
+      NAMESPACE: kind-test-operator
       RELEASE_NAME: hp-ee-${{ github.run_id }}
       CLUSTER_NAME: kind
       IMG: ${{ needs.get-image.outputs.IMG }}
+      STORAGE_CLASS: standard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -241,9 +242,9 @@ jobs:
         id: e2e-test
         run: |
           if [ -n "${{ matrix.testSuiteLabel }}" ]; then
-            make test-e2e E2E_TEST_LABELS=${{ matrix.testSuiteLabel }} RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=cluster_scope WATCHED_NAMESPACES=${{ matrix.watchedNS }} NAMESPACE=${{ env.NAMESPACE }}
+            make test-e2e E2E_TEST_LABELS=${{ matrix.testSuiteLabel }} RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=cluster_scope WATCHED_NAMESPACES=${{ matrix.watchedNS }} NAMESPACE=${{ env.NAMESPACE }} STORAGE_CLASS=$STORAGE_CLASS
           else
-            make test-e2e RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_02 WORKFLOW_ID=cluster_scope WATCHED_NAMESPACES=${{ matrix.watchedNS }} NAMESPACE=${{ env.NAMESPACE }}
+            make test-e2e RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_02 WORKFLOW_ID=cluster_scope WATCHED_NAMESPACES=${{ matrix.watchedNS }} NAMESPACE=${{ env.NAMESPACE }} STORAGE_CLASS=$STORAGE_CLASS
           fi
 
       - name: Upload Test Report

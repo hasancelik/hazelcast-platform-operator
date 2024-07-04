@@ -101,6 +101,7 @@ jobs:
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       GKE_REGION: ${{ needs.create-gke-cluster.outputs.GKE_REGION }}
       RELEASE_NAME: resilience-${{ github.run_id }}
+      STORAGE_CLASS: standard-rwo
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -169,7 +170,7 @@ jobs:
             --namespace ${CHAOS_MESH_NAMESPACE} --from-literal=service_account="$GKE_SA_BASE64"
 
       - name: Run Resilience tests at GKE
-        run: make test-e2e E2E_TEST_LABELS="resilience" NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=resilience
+        run: make test-e2e E2E_TEST_LABELS="resilience" NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=resilience STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Clean up after Tests
         if: always()

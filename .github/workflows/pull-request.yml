@@ -210,6 +210,7 @@ jobs:
       RELEASE_NAME: hp-${{ github.run_id }}
       CLUSTER_NAME: kind
       IMG: ${{ needs.get-image.outputs.IMG }}
+      STORAGE_CLASS: standard
     steps:
       - name: Decide which ref to checkout
         id: decide-ref
@@ -362,7 +363,7 @@ jobs:
       - name: Run Tests
         id: e2e-test
         run: |
-          make test-e2e-split-kind REPORT_SUFFIX=ee_${{ matrix.node_number }} NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} WORKFLOW_ID=pr SHARD_ID="${{ matrix.node_number }}"
+          make test-e2e-split-kind REPORT_SUFFIX=ee_${{ matrix.node_number }} NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} WORKFLOW_ID=pr SHARD_ID="${{ matrix.node_number }}" STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Upload Test Report
         if: always()

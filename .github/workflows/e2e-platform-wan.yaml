@@ -264,6 +264,7 @@ jobs:
 
           echo "sourceNamespace="src-ns"" >> $GITHUB_ENV
           echo "targetNamespace="trg-ns"" >> $GITHUB_ENV
+          echo "STORAGE_CLASS="standard-rwo"" >> $GITHUB_ENV
 
       - name: Connect To The Second GKE Cluster
         uses: 'google-github-actions/get-gke-credentials@v2'
@@ -294,7 +295,7 @@ jobs:
 
       - name: Run Wan Test
         run: |-
-          make test-e2e NAMESPACE=src-ns RELEASE_NAME=src-ns E2E_TEST_LABELS=platform_wan REPORT_SUFFIX=ee_01 WORKFLOW_ID=wan
+          make test-e2e NAMESPACE=src-ns RELEASE_NAME=src-ns E2E_TEST_LABELS=platform_wan REPORT_SUFFIX=ee_01 WORKFLOW_ID=wan STORAGE_CLASS=${{ env.STORAGE_CLASS }}
 
       - name: Upload Test Report
         if: always()

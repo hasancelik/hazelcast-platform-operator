@@ -68,7 +68,7 @@ jobs:
           gcloud iam service-accounts add-iam-policy-binding cn-workload-identity-test@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --project ${{ env.GCP_PROJECT_ID }} \
             --role roles/iam.workloadIdentityUser \
-            --member "serviceAccount:${{ env.GCP_PROJECT_ID }}.svc.id.goog[test-operator-ee/cn-workload-identity-test]"
+            --member "serviceAccount:${{ env.GCP_PROJECT_ID }}.svc.id.goog[test-operator/cn-workload-identity-test]"
 
   grafana-setup:
     needs: [create-gke-cluster]
@@ -80,7 +80,7 @@ jobs:
       gh_run_id: ${{ github.run_id }}
       gh_run_number: ${{ github.run_number }}
       gh_sha: ${{ github.sha }}
-      namespaces: "test-operator-ee"
+      namespaces: "test-operator"
 
   get-image:
     name: Get Image
@@ -140,10 +140,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [create-gke-cluster, grafana-setup, get-image]
     env:
-      NAMESPACE: test-operator-ee
+      NAMESPACE: test-operator
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       RELEASE_NAME: hp-ee-${{ github.run_id }}
       IMG: ${{ needs.get-image.outputs.IMG }}
+      STORAGE_CLASS: standard-rwo
 
     steps:
       - name: Checkout
@@ -234,7 +235,7 @@ jobs:
       - name: Run Hazelcast E2E tests at GKE
         id: e2e-test
         run: |
-          make test-e2e GINKGO_PARALLEL_PROCESSES=2 E2E_TEST_LABELS="platform_persistence || rollout_restart || rolling_upgrade" NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} REPORT_SUFFIX=ee_01 WORKFLOW_ID=platform
+          make test-e2e GINKGO_PARALLEL_PROCESSES=2 E2E_TEST_LABELS="platform_persistence || rollout_restart || rolling_upgrade" NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} REPORT_SUFFIX=ee_01 WORKFLOW_ID=platform STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Clean up after Tests
         if: always()
@@ -265,7 +266,7 @@ jobs:
     with:
       cluster_name: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       cluster_type: gke
-      namespaces: "test-operator-ee,grafana"
+      namespaces: "test-operator,grafana"
 
   delete-cluster:
     name: Delete GKE cluster

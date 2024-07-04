@@ -64,7 +64,7 @@ jobs:
       gh_run_id: ${{ github.run_id }}
       gh_run_number: ${{ github.run_number }}
       gh_sha: ${{ github.sha }}
-      namespaces: test-operator-ph-nightly-ee
+      namespaces: test-operator-ph-nightly
 
   get-image:
     name: Get Image
@@ -135,7 +135,7 @@ jobs:
     env:
       IMG: ${{ needs.get-image.outputs.IMG }}
       VERSION: ${{ needs.get-image.outputs.VERSION }}
-      NAMESPACE: test-operator-ph-nightly-ee
+      NAMESPACE: test-operator-ph-nightly
       PHONE_HOME_ENABLED: true
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       RELEASE_NAME: hp-ee-${{ github.run_id }}
@@ -231,7 +231,7 @@ jobs:
     with:
       cluster_name: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       cluster_type: gke-phone-home
-      namespaces: "test-operator-ph-nightly-ee,grafana"
+      namespaces: "test-operator-ph-nightly,grafana"
 
   delete-cluster:
     name: Delete PhoneHome cluster

@@ -9,7 +9,7 @@ env:
   GAR_REGION: us-east1
   GAR_PROJECT: hazelcast-33
   GAR_REPO: hazelcast-platform-operator
-  NAMESPACE: test-operator-ee
+  NAMESPACE: test-operator
 
 jobs:
   prepare-env:
@@ -82,7 +82,7 @@ jobs:
       gh_run_id: ${{ github.run_id }}
       gh_run_number: ${{ github.run_number }}
       gh_sha: ${{ github.sha }}
-      namespaces: "test-operator-ee"
+      namespaces: "test-operator"
 
   get-image:
     name: Get Image
@@ -147,6 +147,7 @@ jobs:
     env:
       RELEASE_NAME: hp-ee-${{ github.run_id }}
       IMG: ${{ needs.get-image.outputs.IMG }}
+      STORAGE_CLASS: gp2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -242,7 +243,7 @@ jobs:
       - name: Run Hazelcast E2E tests on EKS
         id: e2e-test
         run: |
-          make test-e2e NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} REPORT_SUFFIX=ee_01 WORKFLOW_ID=eks
+          make test-e2e NAMESPACE=${NAMESPACE} RELEASE_NAME=${RELEASE_NAME} REPORT_SUFFIX=ee_01 WORKFLOW_ID=eks STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Check if the operator pod has not restarted
         if: always()
@@ -308,7 +309,7 @@ jobs:
     with:
       cluster_name: ${{ needs.prepare-env.outputs.CLUSTER_NAME }}
       cluster_type: eks
-      namespaces: "test-operator-ee,grafana"
+      namespaces: "test-operator,grafana"
 
   delete-cluster:
     name: Delete EKS cluster
