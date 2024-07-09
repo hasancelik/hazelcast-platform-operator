@@ -605,6 +605,11 @@ spec:
                   This configuration from the ConfigMap might be overridden by the
                   Hazelcast CR configuration.
                 type: string
+              customConfigSecretName:
+                description: Name of the Secret with the Hazelcast custom configuration.
+                  This configuration from the ConfigMap might be overridden by the
+                  Hazelcast CR configuration.
+                type: string
               durableExecutorServices:
                 description: Durable Executor Service configurations, see https://docs.hazelcast.com/hazelcast/latest/computing/durable-executor-service
                 items:
@@ -2689,6 +2694,10 @@ spec:
             required:
             - licenseKeySecretName
             type: object
+            x-kubernetes-validations:
+            - message: ConfigMap and Secret cannot be used for Custom Config at the
+                same time.
+              rule: '!has(self.customConfigCmName) || !has(self.customConfigSecretName)'
           status:
             description: HazelcastStatus defines the observed state of Hazelcast
             properties:

@@ -160,10 +160,9 @@ type HazelcastSpec struct {
 	// +optional
 	Serialization *SerializationConfig `json:"serialization,omitempty"`
 
-	// Name of the ConfigMap with the Hazelcast custom configuration.
-	// This configuration from the ConfigMap might be overridden by the Hazelcast CR configuration.
+	// CustomConfig object name
 	// +optional
-	CustomConfigCmName string `json:"customConfigCmName,omitempty"`
+	CustomConfig `json:",inline,omitempty"`
 
 	// Hazelcast SQL configuration
 	// +optional
@@ -208,6 +207,10 @@ func (s *HazelcastSpec) GetLicenseKeySecretName() string {
 	return s.LicenseKeySecretName
 }
 
+func (s CustomConfig) IsEnabled() bool {
+	return s.ConfigMapName != "" || s.SecretName != ""
+}
+
 // +kubebuilder:validation:Enum=Native;BigEndian;LittleEndian
 type ByteOrder string
 
@@ -224,6 +227,20 @@ const (
 
 func (ucn *UserCodeNamespacesConfig) IsEnabled() bool {
 	return ucn != nil
+}
+
+// CustomConfig contains the name of the custom configuration object
+// +kubebuilder:validation:XValidation:message="ConfigMap and Secret cannot be used for Custom Config at the same time.",rule="!has(self.customConfigCmName) || !has(self.customConfigSecretName)"
+type CustomConfig struct {
+	// Name of the ConfigMap with the Hazelcast custom configuration.
+	// This configuration from the ConfigMap might be overridden by the Hazelcast CR configuration.
+	// +optional
+	ConfigMapName string `json:"customConfigCmName,omitempty"`
+
+	// Name of the Secret with the Hazelcast custom configuration.
+	// This configuration from the ConfigMap might be overridden by the Hazelcast CR configuration.
+	// +optional
+	SecretName string `json:"customConfigSecretName,omitempty"`
 }
 
 type UserCodeNamespacesConfig struct {

@@ -11,7 +11,6 @@ import (
 	. "time"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
-	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -19,6 +18,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
+
+	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -208,7 +209,7 @@ var _ = Describe("Platform Resilience Tests", Label("resilience"), func() {
 			MemberAccess:         hazelcastcomv1alpha1.MemberAccessLoadBalancer,
 		}
 		hazelcast.Spec.ClusterSize = pointer.Int32(6)
-		hazelcast.Spec.CustomConfigCmName = cm.Name
+		hazelcast.Spec.CustomConfig.ConfigMapName = cm.Name
 		CreateHazelcastCR(hazelcast)
 
 		By("split the members into 2 groups")

@@ -1200,30 +1200,43 @@ func hazelcastConfig(ctx context.Context, c client.Client, h *hazelcastv1alpha1.
 		}
 	}
 
-	if h.Spec.CustomConfigCmName != "" {
-		cfgCm := &v1.ConfigMap{}
-		if err := c.Get(ctx, types.NamespacedName{Name: h.Spec.CustomConfigCmName, Namespace: h.Namespace}, cfgCm, nil); err != nil {
-			return nil, err
+	if h.Spec.CustomConfig.IsEnabled() {
+		customCfg := make(map[string]interface{})
+		overwrite := false
+		if h.Spec.CustomConfig.ConfigMapName != "" {
+			cfgCm := &v1.ConfigMap{}
+			if err := c.Get(ctx, types.NamespacedName{Name: h.Spec.CustomConfig.ConfigMapName, Namespace: h.Namespace}, cfgCm, nil); err != nil {
+				return nil, err
+			}
+			overwrite = overwriteCustomConfig(cfgCm)
+			if err = yaml.Unmarshal([]byte(cfgCm.Data[n.HazelcastCustomConfigKey]), customCfg); err != nil {
+				return nil, err
+			}
+		} else if h.Spec.CustomConfig.SecretName != "" {
+			cfgS := &v1.Secret{}
+			if err := c.Get(ctx, types.NamespacedName{Name: h.Spec.CustomConfig.SecretName, Namespace: h.Namespace}, cfgS, nil); err != nil {
+				return nil, err
+			}
+			overwrite = overwriteCustomConfig(cfgS)
+			if err = yaml.Unmarshal(cfgS.Data[n.HazelcastCustomConfigKey], customCfg); err != nil {
+				return nil, err
+			}
 		}
-		var overwrite bool
-		annotations := cfgCm.GetAnnotations()
-		if v := annotations[n.HazelcastCustomConfigOverwriteAnnotation]; v == "true" {
-			overwrite = true
-		}
-		cfgMap := make(map[string]interface{})
-		if err = yaml.Unmarshal([]byte(cfgCm.Data[n.HazelcastCustomConfigKey]), cfgMap); err != nil {
-			return nil, err
-		}
-		cfgMap, err = mergeConfig(cfgMap, &cfg, logger, overwrite)
+		customCfg, err = mergeConfig(customCfg, &cfg, logger, overwrite)
 		if err != nil {
 			return nil, err
 		}
 		hzWrapper := make(map[string]interface{})
-		hzWrapper["hazelcast"] = cfgMap
+		hzWrapper["hazelcast"] = customCfg
 		return yaml.Marshal(hzWrapper)
 	}
 
 	return yaml.Marshal(config.HazelcastWrapper{Hazelcast: cfg})
+}
+
+func overwriteCustomConfig(o client.Object) bool {
+	v := o.GetAnnotations()[n.HazelcastCustomConfigOverwriteAnnotation]
+	return v == "true"
 }
 
 func mergeProperties(logger logr.Logger, inputProps map[string]string) map[string]string {

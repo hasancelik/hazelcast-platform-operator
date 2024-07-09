@@ -267,7 +267,7 @@ func (phm *PhoneHomeData) fillHazelcastMetrics(cl client.Client, hzClientRegistr
 			serializationCount++
 		}
 
-		if hz.Spec.CustomConfigCmName != "" {
+		if hz.Spec.CustomConfig.IsEnabled() {
 			customConfigCount++
 		}
 
