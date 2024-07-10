@@ -21,7 +21,6 @@ jobs:
   get-image:
     name: Get Image
     runs-on: ubuntu-latest
-    permissions: {}
     timeout-minutes: 10
     outputs:
       IMG: ${{ steps.get-image-tag.outputs.IMG }}

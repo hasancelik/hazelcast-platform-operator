@@ -13,7 +13,6 @@ jobs:
   linter:
     name: Run linters
     runs-on: ubuntu-latest
-    permissions: {}
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -69,7 +68,6 @@ jobs:
   unit-tests:
     name: Run unit and integration tests
     runs-on: ubuntu-latest
-    permissions: {}
     timeout-minutes: 10
     steps:
       - name: Checkout

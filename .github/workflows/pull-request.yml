@@ -33,7 +33,6 @@ jobs:
   linter:
     name: Run linters
     runs-on: ubuntu-latest
-    permissions: {}
     if: ( !cancelled() && github.event_name == 'pull_request' )
     timeout-minutes: 10
     steps:
@@ -91,7 +90,6 @@ jobs:
   unit-tests:
     name: Run unit and integration tests
     runs-on: ubuntu-latest
-    permissions: {}
     if: ( !cancelled() && github.event_name == 'pull_request' )
     timeout-minutes: 10
     steps:
@@ -111,7 +109,6 @@ jobs:
   check_breaking_changes:
     name: Check breaking changes
     runs-on: ubuntu-latest
-    permissions: {}
     if: ( !cancelled() && github.event_name == 'pull_request' )
     steps:
       - name: Checkout
