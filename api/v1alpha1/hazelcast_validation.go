@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/kubeclient"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -232,7 +233,7 @@ func (v *hazelcastValidator) validatePersistence(h *Hazelcast) {
 		}
 	}
 
-	if p.StartupAction == PartialStart && p.ClusterDataRecoveryPolicy == FullRecovery {
+	if p.DeprecatedStartupAction == PartialStart && p.ClusterDataRecoveryPolicy == FullRecovery {
 		v.Forbidden(Path("spec", "persistence", "startupAction"), "PartialStart can be used only with Partial clusterDataRecoveryPolicy")
 	}
 
@@ -545,4 +546,15 @@ func isScaledNotPaused(current *HazelcastSpec, last *HazelcastSpec) bool {
 func isRevertedToOldSize(h *Hazelcast) bool {
 	newSize := pointer.Int32Deref(h.Spec.ClusterSize, 3)
 	return newSize == h.Status.ClusterSize
+}
+
+func checkWarningHazelcastSpec(h *Hazelcast) admission.Warnings {
+	warnings := admission.Warnings{}
+	if h.Spec.Persistence.IsEnabled() && h.Spec.Persistence.DeprecatedStartupAction != "" {
+		warnings = append(warnings,
+			fmt.Sprintf("%s is deprecated. Use %s PartialRecoveryMostComplete instead.",
+				Path("spec", "persistence", "startupAction").String(),
+				Path("spec", "persistence", "clusterDataRecoveryPolicy").String()))
+	}
+	return warnings
 }

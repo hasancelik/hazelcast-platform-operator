@@ -125,7 +125,7 @@ jobs:
               memberAccess: NodePortExternalIP
             licenseKeySecret: hazelcast-license-key
             persistence:
-              clusterDataRecoveryPolicy: "FullRecoveryOnly"
+              clusterDataRecoveryPolicy: "PartialRecoveryMostComplete"
               pvc:
                 accessModes: ["ReadWriteOnce"]
                 requestStorage: 10Mi

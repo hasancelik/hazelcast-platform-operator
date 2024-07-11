@@ -1368,7 +1368,7 @@ func hazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) config.Hazelcast {
 			Parallelism:               1,
 			ValidationTimeoutSec:      120,
 			ClusterDataRecoveryPolicy: clusterDataRecoveryPolicy(h.Spec.Persistence.ClusterDataRecoveryPolicy),
-			AutoRemoveStaleData:       pointer.Bool(h.Spec.Persistence.AutoRemoveStaleData()),
+			AutoRemoveStaleData:       pointer.Bool(true),
 		}
 		if h.Spec.Persistence.DataRecoveryTimeout != 0 {
 			cfg.Persistence.ValidationTimeoutSec = h.Spec.Persistence.DataRecoveryTimeout
@@ -2853,19 +2853,19 @@ func configMapVolumeMounts(nameFn ConfigMapVolumeName, rfc hazelcastv1alpha1.Rem
 	return vms
 }
 
-// persistenceStartupAction performs the action specified in the h.Spec.Persistence.StartupAction if
+// persistenceStartupAction performs the action specified in the h.Spec.Persistence.DeprecatedStartupAction if
 // the persistence is enabled and if the Hazelcast is not yet running
 func (r *HazelcastReconciler) persistenceStartupAction(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
 	if !h.Spec.Persistence.IsEnabled() ||
-		h.Spec.Persistence.StartupAction == "" ||
+		h.Spec.Persistence.DeprecatedStartupAction == "" ||
 		h.Status.Phase == hazelcastv1alpha1.Running {
 		return nil
 	}
-	logger.Info("Persistence enabled with startup action.", "action", h.Spec.Persistence.StartupAction)
-	if h.Spec.Persistence.StartupAction == hazelcastv1alpha1.ForceStart {
+	logger.Info("Persistence enabled with startup action.", "action", h.Spec.Persistence.DeprecatedStartupAction)
+	if h.Spec.Persistence.DeprecatedStartupAction == hazelcastv1alpha1.ForceStart {
 		return NewRestClient(h).ForceStart(ctx)
 	}
-	if h.Spec.Persistence.StartupAction == hazelcastv1alpha1.PartialStart {
+	if h.Spec.Persistence.DeprecatedStartupAction == hazelcastv1alpha1.PartialStart {
 		return NewRestClient(h).PartialStart(ctx)
 	}
 	return nil

@@ -584,44 +584,6 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 		)
 	})
 
-	Context("Startup actions configuration", func() {
-		DescribeTable("should start the cluster successfully triggering",
-			func(action hazelcastcomv1alpha1.PersistenceStartupAction, dataPolicy hazelcastcomv1alpha1.DataRecoveryPolicyType) {
-				setLabelAndCRName("br-13")
-				clusterSize := int32(3)
-
-				By("creating cluster with backup enabled")
-				hazelcast := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
-				CreateHazelcastCR(hazelcast)
-				evaluateReadyMembers(hzLookupKey)
-
-				By("creating HotBackup CR")
-				hotBackup := hazelcastconfig.HotBackup(hbLookupKey, hazelcast.Name, labels)
-				Expect(k8sClient.Create(context.Background(), hotBackup)).Should(Succeed())
-				assertHotBackupSuccess(hotBackup, 1*Minute)
-
-				By("deleting the Hazelcast CR")
-				RemoveHazelcastCR(hazelcast)
-
-				By("creating new Hazelcast cluster from existing backup with 2 members")
-
-				hazelcast = hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
-				hazelcast.Spec.ClusterSize = &[]int32{2}[0]
-				hazelcast.Spec.Persistence.DataRecoveryTimeout = 300
-				hazelcast.Spec.Persistence.ClusterDataRecoveryPolicy = dataPolicy
-				hazelcast.Spec.Persistence.StartupAction = action
-				hazelcast.Spec.Persistence.Restore = hazelcastcomv1alpha1.RestoreConfiguration{
-					HotBackupResourceName: hotBackup.Name,
-				}
-				CreateHazelcastCR(hazelcast)
-				evaluateReadyMembers(hzLookupKey)
-				assertClusterStatePortForward(context.Background(), hazelcast, localPort, codecTypes.ClusterStateActive)
-			},
-			Entry("ForceStart action and FullRecovery policy", Tag(AnyCloud), hazelcastcomv1alpha1.ForceStart, hazelcastcomv1alpha1.FullRecovery),
-			Entry("PartialStart action and MostRecent policy", Tag(AnyCloud), hazelcastcomv1alpha1.PartialStart, hazelcastcomv1alpha1.MostRecent),
-		)
-	})
-
 	Context("Restoring from local backup", func() {
 		It("should restore successfully", Tag(Kind|AnyCloud), func() {
 			setLabelAndCRName("br-14")

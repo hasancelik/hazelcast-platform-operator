@@ -30,7 +30,7 @@ var _ webhook.Defaulter = &Hazelcast{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Hazelcast) ValidateCreate() (admission.Warnings, error) {
 	hazelcastlog.Info("validate create", "name", r.Name)
-	return admission.Warnings{}, ValidateHazelcastSpec(r)
+	return checkWarningHazelcastSpec(r), ValidateHazelcastSpec(r)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -39,7 +39,7 @@ func (r *Hazelcast) ValidateUpdate(old runtime.Object) (admission.Warnings, erro
 	if r.GetDeletionTimestamp() != nil {
 		return admission.Warnings{}, nil
 	}
-	return admission.Warnings{}, ValidateHazelcastSpec(r)
+	return checkWarningHazelcastSpec(r), ValidateHazelcastSpec(r)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type

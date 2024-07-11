@@ -724,13 +724,14 @@ type HazelcastPersistenceConfiguration struct {
 	DeprecatedBaseDir string `json:"baseDir"`
 
 	// Configuration of the cluster recovery strategy.
-	// +kubebuilder:default:="FullRecoveryOnly"
+	// +kubebuilder:default:="PartialRecoveryMostComplete"
 	// +optional
 	ClusterDataRecoveryPolicy DataRecoveryPolicyType `json:"clusterDataRecoveryPolicy,omitempty"`
 
-	// StartupAction represents the action triggered when the cluster starts to force the cluster startup.
+	// DEPRECATED: DeprecatedStartupAction is deprecated. Use ClusterDataRecoveryPolicy PartialRecoveryMostComplete instead.
+	// DeprecatedStartupAction represents the action triggered when the cluster starts to force the cluster startup.
 	// +optional
-	StartupAction PersistenceStartupAction `json:"startupAction,omitempty"`
+	DeprecatedStartupAction PersistenceStartupAction `json:"startupAction,omitempty"`
 
 	// DataRecoveryTimeout is timeout for each step of data recovery in seconds.
 	// Maximum timeout is equal to DataRecoveryTimeout*2 (for each step: validation and data-load).
@@ -745,11 +746,6 @@ type HazelcastPersistenceConfiguration struct {
 	// +kubebuilder:default:={}
 	// +optional
 	Restore RestoreConfiguration `json:"restore,omitempty"`
-}
-
-// Returns true if ClusterDataRecoveryPolicy is not FullRecoveryOnly
-func (p *HazelcastPersistenceConfiguration) AutoRemoveStaleData() bool {
-	return p.ClusterDataRecoveryPolicy != FullRecovery
 }
 
 // IsEnabled Returns true if Persistence configuration is specified.

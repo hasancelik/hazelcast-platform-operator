@@ -749,7 +749,7 @@ var _ = Describe("Hazelcast CR", func() {
 
 			By("checking the Persistence CR configuration", func() {
 				Expect(fetchedCR.Spec.Persistence.ClusterDataRecoveryPolicy).
-					Should(Equal(hazelcastv1alpha1.FullRecovery))
+					Should(Equal(hazelcastv1alpha1.MostComplete))
 				Expect(fetchedCR.Spec.Persistence.PVC.AccessModes).Should(ConsistOf(corev1.ReadWriteOnce))
 				Expect(*fetchedCR.Spec.Persistence.PVC.RequestStorage).Should(Equal(resource.MustParse("8Gi")))
 			})
@@ -839,7 +839,7 @@ var _ = Describe("Hazelcast CR", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.Persistence = &hazelcastv1alpha1.HazelcastPersistenceConfiguration{
 				ClusterDataRecoveryPolicy: hazelcastv1alpha1.FullRecovery,
-				StartupAction:             hazelcastv1alpha1.PartialStart,
+				DeprecatedStartupAction:   hazelcastv1alpha1.PartialStart,
 				PVC: &hazelcastv1alpha1.PvcConfiguration{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 				},

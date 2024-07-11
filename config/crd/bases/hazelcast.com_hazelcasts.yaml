@@ -747,7 +747,7 @@ spec:
                       restore from a local backup.
                     type: string
                   clusterDataRecoveryPolicy:
-                    default: FullRecoveryOnly
+                    default: PartialRecoveryMostComplete
                     description: Configuration of the cluster recovery strategy.
                     enum:
                     - FullRecoveryOnly
@@ -835,8 +835,10 @@ spec:
                         type: object
                     type: object
                   startupAction:
-                    description: StartupAction represents the action triggered when
-                      the cluster starts to force the cluster startup.
+                    description: 'DEPRECATED: DeprecatedStartupAction is deprecated.
+                      Use ClusterDataRecoveryPolicy PartialRecoveryMostComplete instead.
+                      DeprecatedStartupAction represents the action triggered when
+                      the cluster starts to force the cluster startup.'
                     enum:
                     - ForceStart
                     - PartialStart
