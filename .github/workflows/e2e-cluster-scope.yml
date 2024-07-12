@@ -90,6 +90,9 @@ jobs:
       IMG: ${{ needs.get-image.outputs.IMG }}
       STORAGE_CLASS: standard
     steps:
+      - name: Delete tools folder
+        run: rm -rf /opt/hostedtoolcache
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
