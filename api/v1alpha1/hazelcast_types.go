@@ -1167,11 +1167,13 @@ type AdvancedNetwork struct {
 }
 
 type WANConfig struct {
+	// +kubebuilder:default:=5710
 	Port      uint `json:"port,omitempty"`
 	PortCount uint `json:"portCount,omitempty"`
 	// +kubebuilder:default:="LoadBalancer"
 	// +optional
 	ServiceType WANServiceType `json:"serviceType,omitempty"`
+	// +kubebuilder:default:="default"
 	// +kubebuilder:validation:MaxLength:=8
 	Name string `json:"name,omitempty"`
 }

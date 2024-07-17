@@ -71,9 +71,11 @@ spec:
                     items:
                       properties:
                         name:
+                          default: default
                           maxLength: 8
                           type: string
                         port:
+                          default: 5710
                           type: integer
                         portCount:
                           type: integer

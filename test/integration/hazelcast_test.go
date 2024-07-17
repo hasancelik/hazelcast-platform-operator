@@ -1839,6 +1839,31 @@ var _ = Describe("Hazelcast CR", func() {
 			})
 		})
 
+		It("should configure WAN fields with default values", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			Expect(k8sClient.Create(context.Background(), hz)).Should(Not(HaveOccurred()))
+			err := k8sClient.Get(context.Background(), client.ObjectKey{
+				Namespace: hz.Namespace,
+				Name:      hz.Name,
+			}, hz)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(hz.Spec.AdvancedNetwork.WAN).Should(HaveLen(1))
+			Expect(hz.Spec.AdvancedNetwork.WAN[0].Name).Should(Equal("default"))
+			Expect(hz.Spec.AdvancedNetwork.WAN[0].Port).Should(BeEquivalentTo(5710))
+			Expect(hz.Spec.AdvancedNetwork.WAN[0].ServiceType).Should(BeEquivalentTo("LoadBalancer"))
+		})
+
 		It("should fail to overlap WAN ports with each other", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
