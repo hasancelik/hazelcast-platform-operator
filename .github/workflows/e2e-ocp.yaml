@@ -306,28 +306,6 @@ jobs:
             oc debug ${NODE} -- chroot /host sh -c "sleep 5; podman image prune -a -f"
           done
 
-  update-test-run-status-badge:
-    runs-on: ubuntu-latest
-    needs: ocp-e2e-tests
-    if: always() && github.event_name != 'workflow_dispatch'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Get Secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            TEST_STATUSES_GIST_ID,CN/TEST_STATUSES_GIST_ID
-            GIST_CREATION_TOKEN,CN/GIST_CREATION_TOKEN
-
   report-generation:
     needs: ocp-e2e-tests
     if: always() && (needs.ocp-e2e-tests.result == 'success' || needs.ocp-e2e-tests.result == 'failure') && github.event_name != 'workflow_dispatch'

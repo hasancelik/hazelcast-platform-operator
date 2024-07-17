@@ -140,7 +140,6 @@ jobs:
   slack_notify:
     name: Slack Notify
     timeout-minutes: 15
-    needs: ["update-test-run-status-badges"]
     if: failure() && github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
