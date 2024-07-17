@@ -1949,6 +1949,25 @@ var _ = Describe("Hazelcast CR", func() {
 			Expect(k8sClient.Create(context.Background(), hz)).
 				Should(MatchError(ContainSubstring("is invalid: [spec.advancedNetwork.wan[0].serviceType: Forbidden: WithExposeExternally can be used when expose externally is enabled")))
 		})
+
+		It("should fail to set invalid port", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Port: 65536,
+					},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			Expect(k8sClient.Create(context.Background(), hz)).
+				Should(MatchError(ContainSubstring("Invalid value: 65536: spec.advancedNetwork.wan[0].port in body should be less than or equal to 65535")))
+		})
 	})
 
 	Context("with NativeMemory configuration", func() {

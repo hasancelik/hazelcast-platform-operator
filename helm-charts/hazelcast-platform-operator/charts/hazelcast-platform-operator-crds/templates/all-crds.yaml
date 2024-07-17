@@ -455,6 +455,7 @@ spec:
                           type: string
                         port:
                           default: 5710
+                          maximum: 65535
                           type: integer
                         portCount:
                           type: integer
