@@ -175,7 +175,7 @@ jobs:
       NAMESPACE: oc-e2e-test-operator-${{ github.run_id }}
       RELEASE_NAME: hp-${{ github.run_id }}
       IMG: ${{ needs.get-image.outputs.IMG }}
-      STORAGE_CLASS: gp2
+      STORAGE_CLASS: gp3-csi
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -327,11 +327,6 @@ jobs:
           secret-ids: |
             TEST_STATUSES_GIST_ID,CN/TEST_STATUSES_GIST_ID
             GIST_CREATION_TOKEN,CN/GIST_CREATION_TOKEN
-
-      - name: Update Status Badge
-        run: |
-          source .github/scripts/utils.sh
-          update_status_badges ${{ github.run_id }} ${{ env.TEST_STATUSES_GIST_ID }} ${{ env.GIST_CREATION_TOKEN }}
 
   report-generation:
     needs: ocp-e2e-tests

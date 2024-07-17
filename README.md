@@ -3,7 +3,7 @@
 <br />
 
 # Hazelcast Platform Operator #
-[![GKE](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2FdevOpsHelm%2Fe513bc27d500818292261e4235723e5b%2Fraw%2FGKE.json%3Fcachebust%3D1)](http://reportboard.s3-website-us-east-1.amazonaws.com/gke)&nbsp; [![EKS](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2FdevOpsHelm%2Fe513bc27d500818292261e4235723e5b%2Fraw%2FEKS.json%3Fcachebust%3D1)](http://reportboard.s3-website-us-east-1.amazonaws.com/eks)&nbsp; [![AKS](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2FdevOpsHelm%2Fe513bc27d500818292261e4235723e5b%2Fraw%2FAKS.json%3Fcachebust%3D1)](http://reportboard.s3-website-us-east-1.amazonaws.com/aks)&nbsp; [![OCP](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2FdevOpsHelm%2Fe513bc27d500818292261e4235723e5b%2Fraw%2FOCP.json%3Fcachebust%3D1)](http://reportboard.s3-website-us-east-1.amazonaws.com/ocp)&nbsp; [![KinD](https://img.shields.io/github/actions/workflow/status/hazelcast/hazelcast-platform-operator/pull-request.yml?label=KinD&style=flat)](http://reportboard.s3-website-us-east-1.amazonaws.com/pr)
+[![Distribution Tests](https://github.com/hazelcast/hazelcast-platform-operator/actions/workflows/k8s-dist-tests.yaml/badge.svg)](https://github.com/hazelcast/hazelcast-platform-operator/actions/workflows/k8s-dist-tests.yaml)
 
 Easily deploy Hazelcast clusters and Management Center into Kubernetes/OpenShift environments and manage their lifecycles.
 

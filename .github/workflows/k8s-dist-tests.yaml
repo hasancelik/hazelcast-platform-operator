@@ -106,33 +106,6 @@ jobs:
     uses: ./.github/workflows/e2e-olm.yaml
     secrets: inherit
 
-  update-test-run-status-badges:
-    needs: [run-aks, run-eks, run-gke]
-    if: always() && needs.decide-run-tests.outputs.RUN_TESTS == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Get Secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            TEST_STATUSES_GIST_ID,CN/TEST_STATUSES_GIST_ID
-            GIST_CREATION_TOKEN,CN/GIST_CREATION_TOKEN
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update Status Badges
-        run: |
-          source .github/scripts/utils.sh
-          update_status_badges ${{ github.run_id }} ${{ env.TEST_STATUSES_GIST_ID }} ${{ env.GIST_CREATION_TOKEN }}
-
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest

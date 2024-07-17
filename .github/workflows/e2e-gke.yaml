@@ -285,11 +285,6 @@ jobs:
             TEST_STATUSES_GIST_ID,CN/TEST_STATUSES_GIST_ID
             GIST_CREATION_TOKEN,CN/GIST_CREATION_TOKEN
 
-      - name: Update Status Badge
-        run: |
-          source .github/scripts/utils.sh
-          update_status_badges ${{ github.run_id }} ${{ env.TEST_STATUSES_GIST_ID }} ${{ env.GIST_CREATION_TOKEN }}
-
   report-generation:
     needs: ["gke-e2e-tests", "create-gke-cluster"]
     if: always() && (needs.gke-e2e-tests.result == 'success' || needs.gke-e2e-tests.result == 'failure') && github.event_name != 'workflow_dispatch'

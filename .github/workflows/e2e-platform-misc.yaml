@@ -2,6 +2,8 @@ name: (E2E) Misc Platform Tests
 on:
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: "0 9 */3 * *"
 
 env:
   GCP_PROJECT_ID: hazelcast-33
