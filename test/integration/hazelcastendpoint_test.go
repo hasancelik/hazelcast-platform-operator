@@ -272,19 +272,16 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 						{
 							Name:        "florida",
 							Port:        5710,
-							PortCount:   9,
 							ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 						},
 						{
 							Name:        "ottawa",
 							Port:        5720,
-							PortCount:   4,
 							ServiceType: hazelcastv1alpha1.WANServiceTypeNodePort,
 						},
 						{
 							Name:        "oslo",
 							Port:        5730,
-							PortCount:   4,
 							ServiceType: hazelcastv1alpha1.WANServiceTypeClusterIP,
 						},
 					},
@@ -294,7 +291,7 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 				Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
 
 				services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 2)
-				hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 13)
+				hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 2)
 
 				setLoadBalancerIngressAddress(ctx, services)
 				expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 20*time.Second)
@@ -318,13 +315,11 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 					{
 						Name:        "florida",
 						Port:        5710,
-						PortCount:   3,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeWithExposeExternally,
 					},
 					{
 						Name:        "ottawa",
 						Port:        5720,
-						PortCount:   2,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeWithExposeExternally,
 					},
 				},
@@ -334,7 +329,7 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 			Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
 
 			services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 4)
-			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 24)
+			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 12)
 
 			setLoadBalancerIngressAddress(ctx, services)
 			expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 20*time.Second)
@@ -423,13 +418,11 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 					{
 						Name:        "london",
 						Port:        5710,
-						PortCount:   3,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeClusterIP,
 					},
 					{
 						Name:        "tokyo",
 						Port:        5720,
-						PortCount:   5,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeNodePort,
 					},
 				},
@@ -439,7 +432,7 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 			Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
 
 			services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 1)
-			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 5)
+			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 1)
 
 			setLoadBalancerIngressAddress(ctx, services)
 			expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 10*time.Second)
@@ -453,13 +446,11 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 					{
 						Name:        "london",
 						Port:        5720,
-						PortCount:   5,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 					},
 					{
 						Name:        "tokyo",
 						Port:        5730,
-						PortCount:   3,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeNodePort,
 					},
 				},
@@ -467,7 +458,7 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 			Expect(k8sClient.Update(context.Background(), hz)).Should(Succeed())
 
 			services = expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 2)
-			hzEndpoints = expectLenOfHazelcastEndpoints(ctx, hz, 8)
+			hzEndpoints = expectLenOfHazelcastEndpoints(ctx, hz, 2)
 
 			setLoadBalancerIngressAddress(ctx, services)
 			expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 10*time.Second)
@@ -487,7 +478,7 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 						{
 							Name:        "madrid",
 							Port:        5710,
-							PortCount:   5,
+
 							ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 						},
 					},

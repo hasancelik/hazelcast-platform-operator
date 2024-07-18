@@ -127,7 +127,9 @@ type JVMConfigUsage struct {
 }
 
 type AdvancedNetwork struct {
-	WANEndpointCount int `json:"wec"`
+	// Deprecated
+	// Keep the struct for the other AdvancedNetwork metrics
+	//WANEndpointCount int `json:"wec"`
 }
 
 type JetEngine struct {
@@ -276,9 +278,6 @@ func (phm *PhoneHomeData) fillHazelcastMetrics(cl client.Client, hzClientRegistr
 		}
 
 		phm.ExposeExternally.addUsageMetrics(hz.Spec.ExposeExternally)
-		if hz.Spec.AdvancedNetwork != nil {
-			phm.AdvancedNetwork.addUsageMetrics(hz.Spec.AdvancedNetwork.WAN)
-		}
 		phm.BackupAndRestore.addUsageMetrics(hz.Spec.Persistence)
 		phm.UserCodeDeployment.addUsageMetrics(hz.Spec.DeprecatedUserCodeDeployment)
 		phm.JVMConfigUsage.addUsageMetrics(hz.Spec.JVM)
@@ -318,12 +317,6 @@ func ClusterUUID(reg hzclient.ClientRegistry, hzName, hzNamespace string) (strin
 		return "", false
 	}
 	return cid.String(), true
-}
-
-func (an *AdvancedNetwork) addUsageMetrics(wc []hazelcastv1alpha1.WANConfig) {
-	for _, w := range wc {
-		an.WANEndpointCount += int(w.PortCount)
-	}
 }
 
 func (xe *ExposeExternally) addUsageMetrics(e *hazelcastv1alpha1.ExposeExternallyConfiguration) {

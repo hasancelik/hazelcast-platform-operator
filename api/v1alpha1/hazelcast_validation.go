@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -289,39 +288,21 @@ func (v *hazelcastValidator) validateWANPorts(h *Hazelcast) {
 }
 
 func (v *hazelcastValidator) isOverlapWithEachOther(h *Hazelcast) {
-	type portRange struct {
-		min uint
-		max uint
-	}
-
-	var portRanges []portRange
-	for _, w := range h.Spec.AdvancedNetwork.WAN {
-		portRanges = append(portRanges, struct {
-			min uint
-			max uint
-		}{min: w.Port, max: w.Port + w.PortCount})
-	}
-
-	sort.Slice(portRanges, func(r1, r2 int) bool {
-		return portRanges[r1].min < portRanges[r2].min
-	})
-
-	for i := 1; i < len(portRanges); i++ {
-		p0 := portRanges[i-1]
-		p1 := portRanges[i]
-		if p0.max > p1.min {
-			v.Invalid(Path("spec", "advancedNetwork", "wan"), fmt.Sprintf("%d-%d", p0.min, p0.max-1), fmt.Sprintf("wan ports overlapping with %d-%d", p1.min, p1.max-1))
+	ports := make(map[uint]struct{}, len(h.Spec.AdvancedNetwork.WAN))
+	for i, w := range h.Spec.AdvancedNetwork.WAN {
+		if _, ok := ports[w.Port]; ok {
+			v.Forbidden(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "port"), "WAN port is overlapping with other WAN ports")
 		}
+		ports[w.Port] = struct{}{}
 	}
 }
 
 func (v *hazelcastValidator) isOverlapWithOtherSockets(h *Hazelcast) {
 	for i, w := range h.Spec.AdvancedNetwork.WAN {
-		min, max := w.Port, w.Port+w.PortCount
-		if (n.MemberServerSocketPort >= min && n.MemberServerSocketPort < max) ||
-			(n.ClientServerSocketPort >= min && n.ClientServerSocketPort < max) ||
-			(n.RestServerSocketPort >= min && n.RestServerSocketPort < max) {
-			v.Invalid(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i)), fmt.Sprintf("%d-%d", min, max-1), fmt.Sprintf("wan ports conflicting with one of %d,%d,%d", n.ClientServerSocketPort, n.MemberServerSocketPort, n.RestServerSocketPort))
+		if (n.MemberServerSocketPort == w.Port) ||
+			(n.ClientServerSocketPort == w.Port) ||
+			(n.RestServerSocketPort == w.Port) {
+			v.Invalid(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "port"), fmt.Sprintf("%d", w.Port), fmt.Sprintf("WAN port is conflicting with one of [%d, %d, %d]", n.ClientServerSocketPort, n.MemberServerSocketPort, n.RestServerSocketPort))
 		}
 	}
 }
@@ -561,6 +542,15 @@ func checkWarningHazelcastSpec(h *Hazelcast) admission.Warnings {
 			fmt.Sprintf("%s is deprecated. Use %s PartialRecoveryMostComplete instead.",
 				Path("spec", "persistence", "startupAction").String(),
 				Path("spec", "persistence", "clusterDataRecoveryPolicy").String()))
+	}
+	if h.Spec.AdvancedNetwork != nil && len(h.Spec.AdvancedNetwork.WAN) > 0 {
+		for i, w := range h.Spec.AdvancedNetwork.WAN {
+			if w.DeprecatedPortCount != nil {
+				warnings = append(warnings,
+					fmt.Sprintf("%s is deprecated. The portCount value will be evaluated as 1 regardless of the given value.",
+						Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "portCount").String()))
+			}
+		}
 	}
 	return warnings
 }

@@ -458,6 +458,8 @@ spec:
                           maximum: 65535
                           type: integer
                         portCount:
+                          description: 'DEPRECATED: PortCount is deprecated. The actual
+                            value is always 1 regardless of the given value.'
                           type: integer
                         serviceType:
                           default: LoadBalancer

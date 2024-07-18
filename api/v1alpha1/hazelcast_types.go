@@ -1169,8 +1169,9 @@ type AdvancedNetwork struct {
 type WANConfig struct {
 	// +kubebuilder:default:=5710
 	// +kubebuilder:validation:Maximum:=65535
-	Port      uint `json:"port,omitempty"`
-	PortCount uint `json:"portCount,omitempty"`
+	Port uint `json:"port,omitempty"`
+	// DEPRECATED: PortCount is deprecated. The actual value is always 1 regardless of the given value.
+	DeprecatedPortCount *uint `json:"portCount,omitempty"`
 	// +kubebuilder:default:="LoadBalancer"
 	// +optional
 	ServiceType WANServiceType `json:"serviceType,omitempty"`
