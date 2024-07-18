@@ -300,7 +300,7 @@ var _ = Describe("Hazelcast CR", func() {
 				Should(MatchError(ContainSubstring("Invalid value: 301: may not be greater than 300")))
 		})
 
-		It("should fail if CR name is invalid", func() {
+		It("should fail if CR name is not a valid DNS label", func() {
 			hz := &hazelcastv1alpha1.Hazelcast{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "1hz",
@@ -309,7 +309,8 @@ var _ = Describe("Hazelcast CR", func() {
 				Spec: test.HazelcastSpec(defaultHazelcastSpecValues()),
 			}
 
-			Expect(k8sClient.Create(context.Background(), hz)).Should(HaveOccurred())
+			Expect(k8sClient.Create(context.Background(), hz)).
+				Should(MatchError(ContainSubstring("Hazelcast name must conform to the DNS-1035 label constraints")))
 		})
 	})
 
@@ -1967,6 +1968,56 @@ var _ = Describe("Hazelcast CR", func() {
 
 			Expect(k8sClient.Create(context.Background(), hz)).
 				Should(MatchError(ContainSubstring("Invalid value: 65536: spec.advancedNetwork.wan[0].port in body should be less than or equal to 65535")))
+		})
+
+		It("should fail if the WAN name is not a valid DNS label", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Name:        "ldn.uk",
+						Port:        5710,
+						PortCount:   3,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+					},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			Expect(k8sClient.Create(context.Background(), hz)).
+				Should(MatchError(ContainSubstring("WAN name must conform to the DNS-1035 label constraints")))
+		})
+
+		It("should fail if the WAN names are not unique", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Name:        "athens",
+						Port:        5710,
+						PortCount:   3,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+					},
+					{
+						Name:        "athens",
+						Port:        5720,
+						PortCount:   5,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeClusterIP,
+					},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			Expect(k8sClient.Create(context.Background(), hz)).
+				Should(MatchError(ContainSubstring("is invalid: spec.advancedNetwork.wan[1].name: Duplicate value: \"athens\"")))
 		})
 	})
 

@@ -84,14 +84,8 @@ func (v *hazelcastValidator) validateSpecUpdate(h *Hazelcast) {
 }
 
 func (v *hazelcastValidator) validateMetadata(h *Hazelcast) {
-	// RFC 1035
-	matched, _ := regexp.MatchString(`^[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$`, h.Name)
-	if !matched {
-		v.Invalid(Path("metadata", "name"),
-			h.Name, "Hazelcast name has the same constraints as DNS-1035 label."+
-				" It must consist of lower case alphanumeric characters or '-',"+
-				" start with an alphabetic character, and end with an alphanumeric character"+
-				" (e.g. 'my-name',  or 'abc-123', regex used for validation is 'a-z?'")
+	if !isValidDNSLabel(h.Name) {
+		v.Invalid(Path("metadata", "name"), h.Name, "Hazelcast name must conform to the DNS-1035 label constraints. "+DNSLabelErrorMessage)
 	}
 }
 
@@ -264,6 +258,7 @@ func (v *hazelcastValidator) validateAdvancedNetwork(h *Hazelcast) {
 	}
 
 	v.validateWANServiceTypes(h)
+	v.validateWANServiceNames(h)
 	v.validateWANPorts(h)
 }
 
@@ -272,6 +267,19 @@ func (v *hazelcastValidator) validateWANServiceTypes(h *Hazelcast) {
 		if w.ServiceType == WANServiceTypeWithExposeExternally && h.Spec.ExposeExternally == nil {
 			v.Forbidden(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "serviceType"), fmt.Sprintf("%s can be used when expose externally is enabled", WANServiceTypeWithExposeExternally))
 		}
+	}
+}
+
+func (v *hazelcastValidator) validateWANServiceNames(h *Hazelcast) {
+	names := make(map[string]struct{})
+	for i, w := range h.Spec.AdvancedNetwork.WAN {
+		if !isValidDNSLabel(w.Name) {
+			v.Invalid(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "name"), w.Name, "WAN name must conform to the DNS-1035 label constraints. "+DNSLabelErrorMessage)
+		}
+		if _, ok := names[w.Name]; ok {
+			v.Duplicate(Path("spec", "advancedNetwork", fmt.Sprintf("wan[%d]", i), "name"), w.Name)
+		}
+		names[w.Name] = struct{}{}
 	}
 }
 
@@ -555,4 +563,12 @@ func checkWarningHazelcastSpec(h *Hazelcast) admission.Warnings {
 				Path("spec", "persistence", "clusterDataRecoveryPolicy").String()))
 	}
 	return warnings
+}
+
+const DNSLabelErrorMessage = "DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')"
+
+// RFC 1035
+func isValidDNSLabel(s string) bool {
+	match, _ := regexp.MatchString(`^[a-z]([-a-z0-9]*[a-z0-9])?$`, s)
+	return match
 }
