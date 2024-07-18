@@ -55,9 +55,12 @@ jobs:
 
       - name: Create Firewall Rules if not existing
         run: |-
-          gcloud compute firewall-rules create ${FIREWALL_RULE_NAME} \
+          existing_rule=$(gcloud compute firewall-rules list --filter="name=${FIREWALL_RULE_NAME}" --format="value(name)")
+          if [ -z "$existing_rule" ]; then
+            gcloud compute firewall-rules create ${FIREWALL_RULE_NAME} \
             --allow tcp:30000-32767 \
-            --network=${{ env.GCP_NETWORK }} | true
+            --network=${{ env.GCP_NETWORK }}
+          fi
 
           gcloud compute firewall-rules update ${FIREWALL_RULE_NAME} \
           --source-ranges="192.0.2.0/24" \
