@@ -1965,7 +1965,6 @@ var _ = Describe("Hazelcast CR", func() {
 					{
 						Name:        "ldn.uk",
 						Port:        5710,
-						PortCount:   3,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 					},
 				},
@@ -1987,13 +1986,11 @@ var _ = Describe("Hazelcast CR", func() {
 					{
 						Name:        "athens",
 						Port:        5710,
-						PortCount:   3,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 					},
 					{
 						Name:        "athens",
 						Port:        5720,
-						PortCount:   5,
 						ServiceType: hazelcastv1alpha1.WANServiceTypeClusterIP,
 					},
 				},
