@@ -123,7 +123,6 @@ func (m memberStatuses) HzStatusApply(hs *hazelcastv1alpha1.HazelcastStatus) {
 			RemainingValidationTime: m.restoreState.RemainingValidationTimeSec(),
 		}
 	}
-
 }
 
 func readyMemberStatuses(m map[hztypes.UUID]*hzclient.MemberData, memberPods []corev1.Pod) []hazelcastv1alpha1.HazelcastMemberStatus {

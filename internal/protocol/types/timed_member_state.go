@@ -17,12 +17,13 @@ type TimedMemberState struct {
 }
 
 type MemberState struct {
-	Address                 string                  `json:"address"`
-	Uuid                    string                  `json:"uuid"`
-	Name                    string                  `json:"name"`
-	NodeState               NodeState               `json:"nodeState"`
-	HotRestartState         HotRestartState         `json:"hotRestartState"`
-	ClusterHotRestartStatus ClusterHotRestartStatus `json:"clusterHotRestartStatus"`
+	Address                 string                   `json:"address"`
+	Uuid                    string                   `json:"uuid"`
+	Name                    string                   `json:"name"`
+	NodeState               NodeState                `json:"nodeState"`
+	HotRestartState         HotRestartState          `json:"hotRestartState"`
+	ClusterHotRestartStatus ClusterHotRestartStatus  `json:"clusterHotRestartStatus"`
+	WanStats                map[string]LocalWanStats `json:"wanStats"`
 }
 
 type NodeState struct {
@@ -67,4 +68,11 @@ func (c ClusterHotRestartStatus) RestoreState() hazelcastv1alpha1.RestoreState {
 	default:
 		return hazelcastv1alpha1.RestoreUnknown
 	}
+}
+
+type LocalWanStats = map[string]LocalWanPublisherStats
+
+type LocalWanPublisherStats struct {
+	IsConnected bool   `json:"isConnected"`
+	State       string `json:"state"`
 }

@@ -2,13 +2,16 @@ package hazelcast
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
+	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 )
 
 type WanRepStatusApplier interface {
@@ -181,4 +184,68 @@ func updateWanMapStatus(ctx context.Context, c client.Client, wan *hazelcastv1al
 	}
 
 	return nil
+}
+
+func updateWanReplicationMemberStatus(ctx context.Context, c client.Client, sr hzclient.StatusServiceRegistry, wan *hazelcastv1alpha1.WanReplication, hzClientMap map[string][]hazelcastv1alpha1.Map) error {
+	for hz, maps := range hzClientMap {
+		name := types.NamespacedName{
+			Namespace: wan.Namespace,
+			Name:      hz,
+		}
+
+		statusService, ok := sr.Get(name)
+		if !ok {
+			return fmt.Errorf("get Hazelcast Status Service failed")
+		}
+
+		members := statusService.GetStatus().MemberDataMap
+		for uuid := range members {
+			state, err := statusService.GetTimedMemberState(ctx, uuid)
+			if err != nil {
+				return err
+			}
+			for wn, wanStats := range state.TimedMemberState.MemberState.WanStats {
+				m, ok := findMapByWanName(wn, maps)
+				if !ok {
+					continue
+				}
+				mapStatusId, ok := findWanMapStatusId(hz, m, wan.Status.WanReplicationMapsStatus)
+				if !ok {
+					continue
+				}
+				mapStatus := wan.Status.WanReplicationMapsStatus[mapStatusId]
+				publisherStats, ok := wanStats[mapStatus.PublisherId]
+				if ok {
+					if mapStatus.MembersStatus == nil {
+						mapStatus.MembersStatus = make(map[string]hazelcastv1alpha1.WanMemberStatus)
+					}
+					mapStatus.MembersStatus[uuid.String()] = hazelcastv1alpha1.WanMemberStatus{
+						IsConnected: publisherStats.IsConnected,
+						State:       publisherStats.State,
+					}
+					wan.Status.WanReplicationMapsStatus[mapStatusId] = mapStatus
+				}
+			}
+		}
+	}
+
+	return c.Status().Update(ctx, wan)
+}
+
+func findMapByWanName(wn string, maps []hazelcastv1alpha1.Map) (hazelcastv1alpha1.Map, bool) {
+	for _, m := range maps {
+		if wn == wanName(m.MapName()) {
+			return m, true
+		}
+	}
+	return hazelcastv1alpha1.Map{}, false
+}
+
+func findWanMapStatusId(hz string, m hazelcastv1alpha1.Map, statuses map[string]hazelcastv1alpha1.WanReplicationMapStatus) (string, bool) {
+	for mapStatusId := range statuses {
+		if mapStatusId == fmt.Sprintf("%s__%s", hz, m.MapName()) {
+			return mapStatusId, true
+		}
+	}
+	return "", false
 }

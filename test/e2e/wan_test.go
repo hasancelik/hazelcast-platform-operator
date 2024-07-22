@@ -201,11 +201,53 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 			wan = assertWanStatus(wan, hazelcastcomv1alpha1.WanStatusSuccess)
 			assertWanStatusMapCount(wan, 2)
 		})
+
+		It("updated the member status", Tag(AnyCloud), func() {
+			setLabelAndCRName("hw-6")
+
+			hzCrs, _ := createWanResources(context.Background(), map[string][]string{
+				hzSrcLookupKey.Name: {mapLookupKey.Name},
+				hzTrgLookupKey.Name: nil,
+			}, hzSrcLookupKey.Namespace, labels)
+
+			By("creating WAN configuration")
+			wan := createWanConfig(context.Background(), wanLookupKey, hzCrs[hzTrgLookupKey.Name],
+				[]hazelcastcomv1alpha1.ResourceSpec{
+					{Name: mapLookupKey.Name},
+				}, 1, labels)
+
+			wan = assertWanStatus(wan, hazelcastcomv1alpha1.WanStatusSuccess)
+
+			By("checking the size of the maps in the target cluster")
+			mapSize := 1024
+			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, mapLookupKey.Name, mapSize)
+
+			By("checking the wan member status")
+			Sleep(Second * 10)
+			err := k8sClient.Get(context.Background(), types.NamespacedName{
+				Name:      wan.Name,
+				Namespace: wan.Namespace,
+			}, wan)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(wan.Status.WanReplicationMapsStatus).Should(HaveLen(1))
+			var mapStatus hazelcastcomv1alpha1.WanReplicationMapStatus
+			for k := range wan.Status.WanReplicationMapsStatus {
+				mapStatus = wan.Status.WanReplicationMapsStatus[k]
+			}
+			Expect(mapStatus.MembersStatus).Should(HaveLen(1))
+			var wanMemberStatus hazelcastcomv1alpha1.WanMemberStatus
+			for k := range mapStatus.MembersStatus {
+				wanMemberStatus = mapStatus.MembersStatus[k]
+			}
+			Expect(wanMemberStatus.IsConnected).Should(BeTrue())
+			Expect(wanMemberStatus.State).Should(BeEquivalentTo("REPLICATING"))
+		})
 	})
 
 	Context("Updating WAN configuration", func() {
 		It("initially fails after removal of replicated Hazelcast CR, then succeeds after removal it from the WAN spec", Tag(AnyCloud), func() {
-			suffix := setLabelAndCRName("hw-6")
+			suffix := setLabelAndCRName("hw-7")
 
 			// Hazelcast and Map CRs
 			hzSource1 := "hz1-source" + suffix
@@ -246,7 +288,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 		})
 
 		It("stops replication for maps removed from WAN spec", Tag(Kind|AnyCloud), func() {
-			suffix := setLabelAndCRName("hw-7")
+			suffix := setLabelAndCRName("hw-8")
 
 			// Hazelcast and Map CRs
 			hzSource1 := "hz1-source" + suffix
@@ -311,7 +353,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 		})
 
 		It("continues replication when 1 of 2 maps references is deleted from WAN spec", Tag(Kind|AnyCloud), func() {
-			suffix := setLabelAndCRName("hw-8")
+			suffix := setLabelAndCRName("hw-9")
 
 			// Hazelcast and Map CRs
 			hzSource1 := "hz1-source" + suffix
@@ -343,7 +385,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 		})
 
 		It("verifies replication initiation for maps added after WAN setup", Tag(AnyCloud), func() {
-			suffix := setLabelAndCRName("hw-9")
+			suffix := setLabelAndCRName("hw-10")
 
 			// Hazelcast CRs
 			hzSource := "hz-source" + suffix
@@ -413,7 +455,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 		})
 
 		It("handles different map names for target cluster replication", Tag(AnyCloud), func() {
-			suffix := setLabelAndCRName("hw-10")
+			suffix := setLabelAndCRName("hw-11")
 
 			// Hazelcast and Map CRs
 			hzSource1 := "hz1-source" + suffix

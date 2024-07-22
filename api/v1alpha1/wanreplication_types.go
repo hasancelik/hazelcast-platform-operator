@@ -171,9 +171,22 @@ type WanReplicationMapStatus struct {
 	// +optional
 	Status WanStatus `json:"status,omitempty"`
 
+	// MembersStatus is the wan status of each member
+	// +optional
+	MembersStatus map[string]WanMemberStatus `json:"membersStatus,omitempty"`
+
 	// Message is the field to show detail information or error
 	// +optional
 	Message string `json:"message,omitempty"`
+}
+
+type WanMemberStatus struct {
+	// IsConnected defines whether the member is connected
+	// +optional
+	IsConnected bool `json:"isConnected"`
+	// State is the WAN state of the member
+	// +optional
+	State string `json:"state,omitempty"`
 }
 
 // WanReplication is the Schema for the wanreplications API

@@ -41,27 +41,29 @@ import (
 type WanReplicationReconciler struct {
 	client.Client
 	logr.Logger
-	Scheme                *runtime.Scheme
-	phoneHomeTrigger      chan struct{}
-	clientRegistry        hzclient.ClientRegistry
-	mtlsClientRegistry    mtls.HttpClientRegistry
-	statusServiceRegistry hzclient.StatusServiceRegistry
+	Scheme                         *runtime.Scheme
+	phoneHomeTrigger               chan struct{}
+	clientRegistry                 hzclient.ClientRegistry
+	mtlsClientRegistry             mtls.HttpClientRegistry
+	statusServiceRegistry          hzclient.StatusServiceRegistry
+	wanMemberStatusUpdateCancelFns map[types.NamespacedName]context.CancelFunc
 }
 
 func NewWanReplicationReconciler(client client.Client, log logr.Logger, scheme *runtime.Scheme, pht chan struct{}, mtlsClientRegistry mtls.HttpClientRegistry, cs hzclient.ClientRegistry, ssm hzclient.StatusServiceRegistry) *WanReplicationReconciler {
 	return &WanReplicationReconciler{
-		Client:                client,
-		Logger:                log,
-		Scheme:                scheme,
-		phoneHomeTrigger:      pht,
-		clientRegistry:        cs,
-		mtlsClientRegistry:    mtlsClientRegistry,
-		statusServiceRegistry: ssm,
+		Client:                         client,
+		Logger:                         log,
+		Scheme:                         scheme,
+		phoneHomeTrigger:               pht,
+		clientRegistry:                 cs,
+		mtlsClientRegistry:             mtlsClientRegistry,
+		statusServiceRegistry:          ssm,
+		wanMemberStatusUpdateCancelFns: make(map[types.NamespacedName]context.CancelFunc),
 	}
 }
 
 func (r *WanReplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.WithValues("name", req.Name, "namespace", req.NamespacedName, "seq", util.RandString(5))
+	logger := r.WithValues("name", req.Name, "namespace", req.Namespace, "seq", util.RandString(5))
 	ctx = context.WithValue(ctx, LogKey("logger"), logger)
 
 	wan := &hazelcastv1alpha1.WanReplication{}
@@ -84,6 +86,10 @@ func (r *WanReplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if !wan.GetDeletionTimestamp().IsZero() {
 		updateWanStatus(ctx, r.Client, wan, recoptions.Empty(), withWanRepState(hazelcastv1alpha1.WanStatusTerminating)) //nolint:errcheck
+		if cancelFn, ok := r.wanMemberStatusUpdateCancelFns[req.NamespacedName]; ok {
+			cancelFn()
+			delete(r.wanMemberStatusUpdateCancelFns, req.NamespacedName)
+		}
 		if controllerutil.ContainsFinalizer(wan, n.Finalizer) {
 			if err := r.deleteLeftoverMapsFromStatus(ctx, wan); err != nil {
 				return updateWanStatus(ctx, r.Client, wan, recoptions.Error(err),
@@ -152,6 +158,12 @@ func (r *WanReplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if !persisted {
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	if _, ok := r.wanMemberStatusUpdateCancelFns[req.NamespacedName]; !ok {
+		statusUpdateCtx, cancelFn := context.WithCancel(context.Background())
+		r.wanMemberStatusUpdateCancelFns[req.NamespacedName] = cancelFn
+		r.startUpdatingWanMemberStatus(statusUpdateCtx, req.NamespacedName, logger)
 	}
 
 	if util.IsPhoneHomeEnabled() && !recoptions.IsSuccessfullyApplied(wan) {
@@ -637,6 +649,40 @@ func (r *WanReplicationReconciler) validateWanConfigPersistence(ctx context.Cont
 
 func splitWanName(name string) string {
 	return strings.TrimSuffix(name, "-default")
+}
+
+func (r *WanReplicationReconciler) startUpdatingWanMemberStatus(ctx context.Context, nn types.NamespacedName, logger logr.Logger) {
+	go func() {
+		logger.Info("Start WAN member status update goroutine")
+		t := time.NewTicker(time.Second * 10)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				logger.Info("Terminate the WAN member status update goroutine", "reason", ctx.Err())
+				return
+			case <-t.C:
+				var w hazelcastv1alpha1.WanReplication
+				if err := r.Get(ctx, nn, &w); err != nil {
+					if kerrors.IsNotFound(err) {
+						logger.Error(err, "Terminate the WAN member status update goroutine")
+						return
+					}
+					continue
+				}
+
+				hzClientMap, err := getMapsGroupByHazelcastName(ctx, r.Client, &w)
+				if err != nil {
+					logger.Error(err, "Get an error on update WAN member status")
+					continue
+				}
+				err = updateWanReplicationMemberStatus(ctx, r.Client, r.statusServiceRegistry, &w, hzClientMap)
+				if err != nil {
+					logger.Error(err, "Get an error on update WAN member status")
+				}
+			}
+		}
+	}()
 }
 
 func (r *WanReplicationReconciler) updateLastSuccessfulConfiguration(ctx context.Context, wan *hazelcastv1alpha1.WanReplication) error {

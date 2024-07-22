@@ -163,6 +163,19 @@ spec:
               wanReplicationMapsStatus:
                 additionalProperties:
                   properties:
+                    membersStatus:
+                      additionalProperties:
+                        properties:
+                          isConnected:
+                            description: IsConnected defines whether the member is
+                              connected
+                            type: boolean
+                          state:
+                            description: State is the WAN state of the member
+                            type: string
+                        type: object
+                      description: MembersStatus is the wan status of each member
+                      type: object
                     message:
                       description: Message is the field to show detail information
                         or error
