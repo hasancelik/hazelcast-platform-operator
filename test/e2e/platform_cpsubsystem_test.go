@@ -158,8 +158,9 @@ var _ = Describe("CP Subsystem", Group("cp_subsystem"), func() {
 
 		spec := hazelcastconfig.CPSubsystemPersistence(3)
 		spec.CPSubsystem.PVC = &hazelcastcomv1alpha1.PvcConfiguration{
-			AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			RequestStorage: &[]resource.Quantity{resource.MustParse("2Gi")}[0],
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			RequestStorage:   &[]resource.Quantity{resource.MustParse("2Gi")}[0],
+			StorageClassName: hazelcastconfig.StorageClass,
 		}
 		hazelcast := &hazelcastcomv1alpha1.Hazelcast{
 			ObjectMeta: v1.ObjectMeta{
@@ -182,7 +183,7 @@ var _ = Describe("CP Subsystem", Group("cp_subsystem"), func() {
 	})
 
 	It("Should work on cluster restored from HotBackup", Tag(AnyCloud), func() {
-		setLabelAndCRName("cp-3")
+		setLabelAndCRName("cp-4")
 		ctx := context.Background()
 		initialCluster := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, 3, labels)
 		CreateHazelcastCR(initialCluster)

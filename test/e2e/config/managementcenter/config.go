@@ -2,7 +2,7 @@ package managementcenter
 
 import (
 	"flag"
-
+	"github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,9 +16,9 @@ var (
 	mcVersion = flag.String("mc-version", naming.MCVersion, "Default Management Center version used in e2e tests")
 	mcRepo    = flag.String("mc-repo", naming.MCRepo, "Management Center repository used in e2e tests")
 )
-
 var (
 	Default = func(lk types.NamespacedName, lbls map[string]string) *hazelcastcomv1alpha1.ManagementCenter {
+		flag.Parse()
 		return &hazelcastcomv1alpha1.ManagementCenter{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      lk.Name,
@@ -33,8 +33,9 @@ var (
 					Type: hazelcastcomv1alpha1.ExternalConnectivityTypeLoadBalancer,
 				},
 				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
-					Enabled: pointer.Bool(true),
-					Size:    &[]resource.Quantity{resource.MustParse("10Gi")}[0],
+					Enabled:      pointer.Bool(true),
+					Size:         &[]resource.Quantity{resource.MustParse("10Gi")}[0],
+					StorageClass: hazelcast.StorageClass,
 				},
 			},
 		}
@@ -63,25 +64,6 @@ var (
 				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
 					Enabled: pointer.Bool(false),
 				},
-			},
-		}
-	}
-
-	WithClusterConfig = func(lk types.NamespacedName, clusterConfigs []hazelcastcomv1alpha1.HazelcastClusterConfig, lbls map[string]string) *hazelcastcomv1alpha1.ManagementCenter {
-		return &hazelcastcomv1alpha1.ManagementCenter{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      lk.Name,
-				Namespace: lk.Namespace,
-				Labels:    lbls,
-			},
-			Spec: hazelcastcomv1alpha1.ManagementCenterSpec{
-				Repository:           *mcRepo,
-				Version:              *mcVersion,
-				LicenseKeySecretName: naming.LicenseKeySecret,
-				ExternalConnectivity: &hazelcastcomv1alpha1.ExternalConnectivityConfiguration{
-					Type: hazelcastcomv1alpha1.ExternalConnectivityTypeLoadBalancer,
-				},
-				HazelcastClusters: clusterConfigs,
 			},
 		}
 	}
@@ -128,6 +110,8 @@ var (
 				Repository:           *mcRepo,
 				Version:              "not-exists",
 				LicenseKeySecretName: naming.LicenseKeySecret,
+				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
+					StorageClass: hazelcast.StorageClass},
 			},
 		}
 	}

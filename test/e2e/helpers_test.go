@@ -54,8 +54,6 @@ import (
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
 	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
-
-	mcconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/managementcenter"
 )
 
 type UpdateFn func(*hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast
@@ -1209,15 +1207,6 @@ func createWanSync(ctx context.Context, lk types.NamespacedName, wanReplicationN
 	wan = assertWanSyncStatus(wan, hazelcastcomv1alpha1.WanSyncCompleted)
 	wan = assertWanSyncStatusMapCount(wan, mapCount)
 	return wan
-}
-
-func CreateMcForClusters(ctx context.Context, hzCrs ...*hazelcastcomv1alpha1.Hazelcast) {
-	clusters := []hazelcastcomv1alpha1.HazelcastClusterConfig{}
-	for _, hz := range hzCrs {
-		clusters = append(clusters, hazelcastcomv1alpha1.HazelcastClusterConfig{Name: hz.Spec.ClusterName, Address: hzclient.HazelcastUrl(hz)})
-	}
-	mc := mcconfig.WithClusterConfig(mcLookupKey, clusters, labels)
-	Expect(k8sClient.Create(ctx, mc)).Should(Succeed())
 }
 
 func createMapCRWithMapName(ctx context.Context, mapCrName, mapName string, hzLookupKey types.NamespacedName) *hazelcastcomv1alpha1.Map {
