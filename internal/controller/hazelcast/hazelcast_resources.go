@@ -11,6 +11,7 @@ import (
 	"net"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -473,6 +474,59 @@ func wanPort(w hazelcastv1alpha1.WANConfig) corev1.ServicePort {
 		TargetPort:  intstr.FromInt(int(w.Port)),
 		AppProtocol: pointer.String("tcp"),
 	}
+}
+
+func (r *HazelcastReconciler) reconcileUnusedWANServices(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, lastSpec *hazelcastv1alpha1.HazelcastSpec) error {
+	wans := findWANsToBeRemoved(h.Spec.AdvancedNetwork, lastSpec.AdvancedNetwork)
+	if len(wans) == 0 {
+		return nil
+	}
+
+	wanSvcLblMatcher := util.Labels(h)
+	wanSvcLblMatcher[n.ServiceEndpointTypeLabelName] = n.ServiceEndpointTypeWANLabelValue
+
+	svcList := &corev1.ServiceList{}
+	if err := r.Client.List(ctx, svcList, client.MatchingLabels(wanSvcLblMatcher)); err != nil {
+		return err
+	}
+
+	for _, svc := range svcList.Items {
+		for _, wan := range wans {
+			if fmt.Sprintf("%s-%s", h.Name, wan.Name) == svc.Name {
+				if err := r.Client.Delete(ctx, &svc); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func findWANsToBeRemoved(current *hazelcastv1alpha1.AdvancedNetwork, last *hazelcastv1alpha1.AdvancedNetwork) []hazelcastv1alpha1.WANConfig {
+	if current == nil && last != nil && len(last.WAN) > 0 { // remove all
+		return last.WAN
+	}
+
+	if last == nil { // nothing to remove
+		return []hazelcastv1alpha1.WANConfig{}
+	}
+
+	var removeList []hazelcastv1alpha1.WANConfig
+	for _, c := range last.WAN {
+		found := false
+		for _, l := range current.WAN {
+			if reflect.DeepEqual(c, l) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			removeList = append(removeList, c)
+		}
+	}
+
+	return removeList
 }
 
 func serviceType(h *hazelcastv1alpha1.Hazelcast) corev1.ServiceType {

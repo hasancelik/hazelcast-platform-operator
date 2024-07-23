@@ -187,6 +187,11 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
 		}
+
+		err = r.reconcileUnusedWANServices(ctx, h, lastSpec)
+		if err != nil {
+			return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
+		}
 	}
 
 	err = r.reconcileSecret(ctx, h, logger)

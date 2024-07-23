@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -466,44 +467,90 @@ var _ = Describe("HazelcastEndpoint CR", func() {
 			expectAddressesInHazelcastEndpointsMatchWithServices(hzEndpoints, services)
 		})
 
-		// CN-1335
-		/*
-			It("should delete the leftover resources if advancedNetwork wan is removed", func() {
-				hz := &hazelcastv1alpha1.Hazelcast{
-					ObjectMeta: randomObjectMeta(namespace),
-					Spec:       test.HazelcastSpec(defaultHazelcastSpecValues()),
-				}
-				hz.Spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
-					WAN: []hazelcastv1alpha1.WANConfig{
-						{
-							Name:        "madrid",
-							Port:        5710,
-
-							ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
-						},
+		It("should delete the leftover resources if advancedNetwork wan is removed", func() {
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       test.HazelcastSpec(defaultHazelcastSpecValues()),
+			}
+			hz.Spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Name:        "madrid",
+						Port:        5710,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
 					},
-				}
+				},
+			}
 
-				By("creating the Hazelcast CR with specs successfully")
-				Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
+			By("creating the Hazelcast CR with specs successfully")
+			Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
 
-				services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 1)
-				hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 5)
+			services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 1)
+			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 1)
 
-				setLoadBalancerIngressAddress(ctx, services)
-				expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 10*time.Second)
+			setLoadBalancerIngressAddress(ctx, services)
+			expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 10*time.Second)
 
-				expectAddressesInHazelcastEndpointsMatchWithServices(hzEndpoints, services)
+			expectAddressesInHazelcastEndpointsMatchWithServices(hzEndpoints, services)
 
-				By("updating the Hazelcast CR with specs successfully")
-				Expect(k8sClient.Get(context.Background(), lookupKey(hz), hz)).Should(Succeed())
-				hz.Spec.AdvancedNetwork = nil
-				Expect(k8sClient.Update(context.Background(), hz)).Should(Succeed())
+			By("updating the Hazelcast CR with specs successfully")
+			Expect(k8sClient.Get(context.Background(), lookupKey(hz), hz)).Should(Succeed())
+			hzSpec, _ := json.Marshal(&hz.Spec)
+			hz.Annotations[n.LastSuccessfulSpecAnnotation] = string(hzSpec)
+			hz.Spec.AdvancedNetwork.WAN = []hazelcastv1alpha1.WANConfig{}
+			Expect(k8sClient.Update(context.Background(), hz)).Should(Succeed())
 
-				expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 0)
-				expectLenOfHazelcastEndpoints(ctx, hz, 0)
-			})
-		*/
+			expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 0)
+			expectLenOfHazelcastEndpoints(ctx, hz, 0)
+		})
+
+		It("should delete the leftover resources if advancedNetwork wan is removed (2)", func() {
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       test.HazelcastSpec(defaultHazelcastSpecValues()),
+			}
+			hz.Spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Name:        "istanbul",
+						Port:        5710,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+					},
+					{
+						Name:        "ankara",
+						Port:        5720,
+						ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+					},
+				},
+			}
+
+			By("creating the Hazelcast CR with specs successfully")
+			Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
+
+			services := expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 2)
+			hzEndpoints := expectLenOfHazelcastEndpoints(ctx, hz, 2)
+
+			setLoadBalancerIngressAddress(ctx, services)
+			expectHazelcastEndpointHasAddress(ctx, hzEndpoints, 10*time.Second)
+
+			expectAddressesInHazelcastEndpointsMatchWithServices(hzEndpoints, services)
+
+			By("updating the Hazelcast CR with specs successfully")
+			Expect(k8sClient.Get(context.Background(), lookupKey(hz), hz)).Should(Succeed())
+			hzSpec, _ := json.Marshal(&hz.Spec)
+			hz.Annotations[n.LastSuccessfulSpecAnnotation] = string(hzSpec)
+			hz.Spec.AdvancedNetwork.WAN = []hazelcastv1alpha1.WANConfig{
+				{
+					Name:        "istanbul",
+					Port:        5710,
+					ServiceType: hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+				},
+			}
+			Expect(k8sClient.Update(context.Background(), hz)).Should(Succeed())
+
+			expectLenOfHazelcastServicesWithHazelcastEndpointLabel(ctx, hz, 1)
+			expectLenOfHazelcastEndpoints(ctx, hz, 1)
+		})
 	})
 
 	When("HazelcastEndpoint spec is updated", func() {
