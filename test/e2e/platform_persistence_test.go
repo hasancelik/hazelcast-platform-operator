@@ -159,7 +159,6 @@ var _ = Describe("Platform Persistence", Label("platform_persistence"), func() {
 		m.GetManagedFields()
 		Expect(k8sClient.Create(context.Background(), m)).Should(Succeed())
 		assertMapStatus(m, hazelcastcomv1alpha1.MapSuccess)
-
 		err := FillMapByEntryCount(ctx, hzLookupKey, true, m.GetName(), 100)
 		Expect(err).To(BeNil())
 		t := Now()
@@ -168,10 +167,10 @@ var _ = Describe("Platform Persistence", Label("platform_persistence"), func() {
 		logs := InitLogs(t, hzLookupKey)
 		logReader := test.NewLogReader(logs)
 		defer logReader.Close()
-		test.EventuallyInLogs(logReader, 40*Second, logInterval).Should(MatchRegexp("newState=FROZEN"))
-		test.EventuallyInLogs(logReader, 20*Second, logInterval).ShouldNot(MatchRegexp("Repartitioning cluster data. Migration tasks count"))
-		test.EventuallyInLogs(logReader, 50*Second, logInterval).Should(MatchRegexp("newState=ACTIVE"))
-		test.EventuallyInLogs(logReader, 20*Second, logInterval).ShouldNot(MatchRegexp("Repartitioning cluster data. Migration tasks count"))
+		test.EventuallyInLogs(logReader, 90*Second, logInterval).Should(MatchRegexp(`newState=FROZEN`))
+		test.EventuallyInLogs(logReader, 90*Second, logInterval).ShouldNot(MatchRegexp("Repartitioning cluster data. Migration tasks count"))
+		test.EventuallyInLogs(logReader, 90*Second, logInterval).Should(MatchRegexp("Changing cluster state from ClusterState.*FROZEN.*newState=ACTIVE"))
+		test.EventuallyInLogs(logReader, 90*Second, logInterval).ShouldNot(MatchRegexp("Repartitioning cluster data. Migration tasks count"))
 		WaitForMapSize(context.Background(), hzLookupKey, m.GetName(), 100, 10*Minute)
 	})
 

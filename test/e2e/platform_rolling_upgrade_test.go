@@ -61,13 +61,15 @@ var _ = Describe("Platform Rolling UpgradeTests", Label("rolling_upgrade"), func
 				corev1.ResourceMemory: resource.MustParse("1Gi")},
 		}
 		mc.Spec.Persistence = &hazelcastcomv1alpha1.MCPersistenceConfiguration{
-			Size: &[]resource.Quantity{resource.MustParse("5Gi")}[0]}
+			Size:         &[]resource.Quantity{resource.MustParse("5Gi")}[0],
+			StorageClass: hazelcastconfig.StorageClass,
+		}
 
 		create(mc)
 
 		By("creating Hazelcast cluster with partition count 7999 and 28 maps")
 		hazelcast := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
-		hazelcast.Spec.Version = "5.2.4"
+		hazelcast.Spec.Version = "5.3.2"
 		jvmArgs := []string{
 			"-Dhazelcast.partition.count=7999",
 		}
@@ -108,7 +110,7 @@ var _ = Describe("Platform Rolling UpgradeTests", Label("rolling_upgrade"), func
 		By("resume Hazelcast")
 		UpdateHazelcastCR(hazelcast, func(hazelcast *hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast {
 			hazelcast.Spec.ClusterSize = pointer.Int32(3)
-			hazelcast.Spec.Version = "5.3.2"
+			hazelcast.Spec.Version = "5.4.0"
 			return hazelcast
 		})
 		evaluateReadyMembers(hzLookupKey)
