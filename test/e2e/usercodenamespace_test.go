@@ -137,6 +137,7 @@ var _ = Describe("Hazelcast User Code Namespace", Group("user_code_namespace"), 
 			hazelcast.Spec.ClusterSize = pointer.Int32(3)
 			return hazelcast
 		})
+		WaitForReplicaSize(h.Namespace, h.Name, 3)
 		evaluateReadyMembers(hzLookupKey)
 
 		By("creating map with Map with entry listener")
