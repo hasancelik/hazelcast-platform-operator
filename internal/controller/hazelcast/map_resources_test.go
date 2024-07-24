@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 )
@@ -131,14 +132,14 @@ func Test_mapTieredStoreConfig(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			RegisterFailHandler(fail(t))
+			RegisterFailHandler(faketest.Fail(t))
 			hs, _ := json.Marshal(h.Spec)
 			h.ObjectMeta.Annotations = map[string]string{
 				n.LastSuccessfulSpecAnnotation: string(hs),
 			}
 			m.Spec = test.mapSpec
 			m.Spec.HazelcastResourceName = h.Name
-			r := mapReconcilerWithCRs(&fakeHzClientRegistry{}, h, m)
+			r := mapReconcilerWithCRs(&FakeHzClientRegistry{}, h, m)
 			_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nn})
 			if err == nil {
 				t.Errorf("Expecting Reconcile to return error")
@@ -154,19 +155,19 @@ func Test_mapTieredStoreConfig(t *testing.T) {
 }
 
 func Test_mapConfigFailedToApply(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, m := defaultCRsMap()
 	hs, _ := json.Marshal(h.Spec)
 	h.ObjectMeta.Annotations = map[string]string{
 		n.LastSuccessfulSpecAnnotation: string(hs),
 	}
-	clReg := &fakeHzClientRegistry{}
+	clReg := &FakeHzClientRegistry{}
 	fakeHzClient, _, _ := defaultFakeClientAndService()
-	fakeHzClient.tInvokeOnMember = func(ctx context.Context, req *proto.ClientMessage, uuid clientTypes.UUID, opts *proto.InvokeOptions) (*proto.ClientMessage, error) {
+	fakeHzClient.TInvokeOnMember = func(ctx context.Context, req *proto.ClientMessage, uuid clientTypes.UUID, opts *proto.InvokeOptions) (*proto.ClientMessage, error) {
 		return nil, fmt.Errorf("error sending map config")
 	}
 	clReg.Set(nn, &fakeHzClient)
-	k8sCl := fakeK8sClient(h, m)
+	k8sCl := faketest.FakeK8sClient(h, m)
 	r := NewMapReconciler(
 		k8sCl,
 		ctrl.Log.WithName("test").WithName("Hazelcast"),
@@ -221,7 +222,7 @@ func defaultCRsMap() (types.NamespacedName, *hazelcastv1alpha1.Hazelcast, *hazel
 
 func mapReconcilerWithCRs(clientReg hzclient.ClientRegistry, initObjs ...client.Object) *MapReconciler {
 	return NewMapReconciler(
-		fakeK8sClient(initObjs...),
+		faketest.FakeK8sClient(initObjs...),
 		ctrl.Log.WithName("test").WithName("Hazelcast"),
 		nil,
 		clientReg,

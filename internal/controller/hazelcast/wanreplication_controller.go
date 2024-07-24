@@ -264,7 +264,7 @@ func (r *WanReplicationReconciler) stopWanReplicationMap(ctx context.Context, wa
 	}
 
 	log.V(util.DebugLevel).Info("stopping WAN replication for", "mapKey", mapWanKey)
-	ws := hzclient.NewWanService(cli, wanName(m.MapName()), publisherId)
+	ws := hzclient.NewWanService(cli, codecTypes.DefaultWanReplicationRefName(m.MapName()), publisherId)
 
 	if err := ws.ChangeWanState(ctx, codecTypes.WanReplicationStateStopped); err != nil {
 		return err
@@ -521,16 +521,12 @@ func (r *WanReplicationReconciler) applyWanReplication(ctx context.Context, cli 
 		req.ConsistencyCheckStrategy = hzclient.MerkleTrees
 	}
 
-	ws := hzclient.NewWanService(cli, wanName(mapName), publisherId)
+	ws := hzclient.NewWanService(cli, codecTypes.DefaultWanReplicationRefName(mapName), publisherId)
 	err := ws.AddBatchPublisherConfig(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("failed to apply WAN configuration: %w", err)
 	}
 	return publisherId, nil
-}
-
-func wanName(mapName string) string {
-	return mapName + "-default"
 }
 
 func (r *WanReplicationReconciler) addWanRepFinalizerToReplicatedMaps(ctx context.Context, wan *hazelcastv1alpha1.WanReplication, hzClientMap map[string][]hazelcastv1alpha1.Map) error {
@@ -624,7 +620,7 @@ func (r *WanReplicationReconciler) validateWanConfigPersistence(ctx context.Cont
 		}
 
 		// WAN publisher is in Config but is not correct
-		realPub := createBatchPublisherConfig(*wan)
+		realPub := config.CreateBatchPublisherConfig(*wan)
 		if !reflect.DeepEqual(realPub, wanPub) {
 			continue
 		}

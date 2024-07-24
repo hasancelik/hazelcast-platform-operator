@@ -12,6 +12,7 @@ import (
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
+	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 )
 
 type WanRepStatusApplier interface {
@@ -234,7 +235,7 @@ func updateWanReplicationMemberStatus(ctx context.Context, c client.Client, sr h
 
 func findMapByWanName(wn string, maps []hazelcastv1alpha1.Map) (hazelcastv1alpha1.Map, bool) {
 	for _, m := range maps {
-		if wn == wanName(m.MapName()) {
+		if wn == codecTypes.DefaultWanReplicationRefName(m.MapName()) {
 			return m, true
 		}
 	}

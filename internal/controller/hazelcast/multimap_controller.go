@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
 	recoptions "github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
@@ -120,7 +121,7 @@ func (r *MultiMapReconciler) validateMultiMapConfigPersistence(ctx context.Conte
 	if !ok {
 		return false, nil
 	}
-	currentMMcfg := createMultiMapConfig(mm)
+	currentMMcfg := config.CreateMultiMapConfig(mm)
 
 	if !reflect.DeepEqual(mmcfg, currentMMcfg) {
 		return false, nil

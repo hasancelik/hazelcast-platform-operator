@@ -26,21 +26,6 @@ import (
 
 type Update func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
 
-func isDSPersisted(obj client.Object) bool {
-	switch obj.(hazelcastv1alpha1.DataStructure).GetStatus().State {
-	case hazelcastv1alpha1.DataStructurePersisting, hazelcastv1alpha1.DataStructureSuccess:
-		return true
-	case hazelcastv1alpha1.DataStructureFailed, hazelcastv1alpha1.DataStructurePending:
-		if spec, ok := obj.GetAnnotations()[n.LastSuccessfulSpecAnnotation]; ok {
-			if err := obj.(hazelcastv1alpha1.DataStructure).SetSpec(spec); err != nil {
-				return false
-			}
-			return true
-		}
-	}
-	return false
-}
-
 func initialSetupDS(ctx context.Context,
 	c client.Client,
 	nn client.ObjectKey,

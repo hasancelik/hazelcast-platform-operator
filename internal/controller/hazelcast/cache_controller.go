@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
 	recoptions "github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
@@ -124,7 +125,7 @@ func (r *CacheReconciler) validateCacheConfigPersistence(ctx context.Context, c 
 	if !ok {
 		return false, nil
 	}
-	currentQCfg := createCacheConfig(c)
+	currentQCfg := config.CreateCacheConfig(c)
 
 	if !reflect.DeepEqual(ccfg, currentQCfg) {
 		return false, nil

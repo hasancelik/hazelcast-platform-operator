@@ -11,11 +11,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
 )
 
 func Test_ShouldSendParametersInRequest(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 
 	jj := &hazelcastv1alpha1.JetJob{
 		ObjectMeta: v1.ObjectMeta{
@@ -29,9 +30,9 @@ func Test_ShouldSendParametersInRequest(t *testing.T) {
 			Phase: hazelcastv1alpha1.JetJobNotRunning,
 		},
 	}
-	c := &fakeHzClient{}
+	c := &faketest.FakeHzClient{}
 	var params []string
-	c.tInvokeOnRandomTarget = func(ctx context.Context, req *proto.ClientMessage, opts *proto.InvokeOptions) (*proto.ClientMessage, error) {
+	c.TInvokeOnRandomTarget = func(ctx context.Context, req *proto.ClientMessage, opts *proto.InvokeOptions) (*proto.ClientMessage, error) {
 		if req.Type() == codec.JetUploadJobMetaDataCodecRequestMessageType {
 			jobMetaData := codec.DecodeJetUploadJobMetaDataRequest(req)
 			params = jobMetaData.JobParameters
@@ -45,11 +46,11 @@ func Test_ShouldSendParametersInRequest(t *testing.T) {
 		return clientMessage, nil
 	}
 	nn := types.NamespacedName{Namespace: "default", Name: "hazelcast"}
-	clReg := &fakeHzClientRegistry{}
+	clReg := &FakeHzClientRegistry{}
 	clReg.Set(nn, c)
 	r := &JetJobReconciler{
 		ClientRegistry: clReg,
-		Client:         fakeK8sClient(jj),
+		Client:         faketest.FakeK8sClient(jj),
 	}
 	_, err := r.applyJetJob(context.TODO(), jj, nn, logr.Discard())
 	Expect(err).To(BeNil())

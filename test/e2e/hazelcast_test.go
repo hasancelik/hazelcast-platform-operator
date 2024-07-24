@@ -6,11 +6,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 )
 
@@ -191,6 +194,69 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 				assertExists(tlsSecretNn, &corev1.Secret{})
 			})
 
+			CreateHazelcastCR(hz)
+			evaluateReadyMembers(hzLookupKey)
+		})
+	})
+
+	Context("Custom Config", func() {
+		It("should setup client authentication from Custom Config", Tag(Kind|AnyCloud), func() {
+			setLabelAndCRName("cc-1")
+
+			hz := hazelcastconfig.Default(hzLookupKey, labels)
+			ccSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "custom-config-secret",
+					Namespace: hz.Namespace,
+				},
+			}
+			customConfig := make(map[string]interface{})
+			sc := make(map[string]interface{})
+			sc["enabled"] = true
+
+			ca := make(map[string]string)
+			ca["realm"] = "simpleRealm"
+			sc["client-authentication"] = ca
+
+			clp := make(map[string]interface{})
+			clpall := make(map[string]interface{})
+			clpall["principal"] = "root"
+			clp["all"] = clpall
+			sc["client-permissions"] = clp
+
+			realms := make([]map[string]interface{}, 0)
+			simpleRealm := make(map[string]interface{})
+			simpleRealm["name"] = "simpleRealm"
+			authentication := make(map[string]interface{})
+			simple := make(map[string]interface{})
+			users := make([]map[string]interface{}, 0)
+			user := make(map[string]interface{})
+			user["username"] = "admin"
+			user["password"] = "admin-pass"
+			user["roles"] = []string{"role1", "role2", "root"}
+			users = append(users, user)
+			simple["users"] = users
+			authentication["simple"] = simple
+			simpleRealm["authentication"] = authentication
+			realms = append(realms, simpleRealm)
+			sc["realms"] = realms
+
+			customConfig["security"] = sc
+			out, err := yaml.Marshal(customConfig)
+			Expect(err).Should(Succeed())
+
+			ccSecret.Data = make(map[string][]byte)
+			ccSecret.Data[n.HazelcastCustomConfigKey] = out
+
+			Eventually(func() error {
+				err := k8sClient.Create(context.TODO(), ccSecret)
+				if errors.IsAlreadyExists(err) {
+					return nil
+				}
+				return err
+			}, Minute, interval).Should(Succeed())
+
+			hz.Spec.CustomConfig.SecretName = ccSecret.Name
 			CreateHazelcastCR(hz)
 			evaluateReadyMembers(hzLookupKey)
 		})

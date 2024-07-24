@@ -207,7 +207,7 @@ func (r *MapReconciler) ReconcileMapConfig(
 			false,
 			m.Spec.Eviction.MaxSize,
 			hazelcastv1alpha1.EncodeMaxSizePolicy[m.Spec.Eviction.MaxSizePolicy],
-			defaultWanReplicationRefCodec(m),
+			codecTypes.DefaultWanReplicationRefCodec(m),
 		)
 	} else {
 		mapInput := codecTypes.DefaultAddMapConfigInput()
@@ -258,7 +258,7 @@ func fillAddMapConfigInput(ctx context.Context, c client.Client, mapInput *codec
 	mapInput.IndexConfigs = copyIndexes(ms.Indexes)
 	mapInput.AttributeConfigs = copyAttributes(ms.Attributes)
 	mapInput.HotRestartConfig.Enabled = ms.PersistenceEnabled
-	mapInput.WanReplicationRef = defaultWanReplicationRefCodec(m)
+	mapInput.WanReplicationRef = codecTypes.DefaultWanReplicationRefCodec(m)
 	mapInput.InMemoryFormat = string(ms.InMemoryFormat)
 	mapInput.UserCodeNamespace = ms.UserCodeNamespace
 	if ms.MerkleTree != nil {
@@ -270,7 +270,7 @@ func fillAddMapConfigInput(ctx context.Context, c client.Client, mapInput *codec
 	}
 
 	if ms.MapStore != nil {
-		props, err := getMapStoreProperties(ctx, c, ms.MapStore.PropertiesSecretName, hz.Namespace)
+		props, err := config.MapStoreProperties(ctx, c, ms.MapStore.PropertiesSecretName, hz.Namespace)
 		if err != nil {
 			return err
 		}
@@ -346,19 +346,6 @@ func fillAddMapConfigInput(ctx context.Context, c client.Client, mapInput *codec
 	return nil
 }
 
-func defaultWanReplicationRefCodec(m *hazelcastv1alpha1.Map) codecTypes.WanReplicationRef {
-	return codecTypes.WanReplicationRef{
-		Name:                 defaultWanReplicationRefName(m),
-		MergePolicyClassName: n.DefaultMergePolicyClassName,
-		Filters:              []string{},
-		RepublishingEnabled:  true,
-	}
-}
-
-func defaultWanReplicationRefName(m *hazelcastv1alpha1.Map) string {
-	return m.MapName() + "-default"
-}
-
 func copyIndexes(idx []hazelcastv1alpha1.IndexConfig) []codecTypes.IndexConfig {
 	ics := make([]codecTypes.IndexConfig, len(idx))
 
@@ -429,7 +416,7 @@ func (r *MapReconciler) validateMapConfigPersistence(ctx context.Context, h *haz
 		return false, nil
 	}
 
-	currentMcfg, err := createMapConfig(ctx, r.Client, h, m)
+	currentMcfg, err := config.CreateMapConfig(ctx, r.Client, h, m)
 	if err != nil {
 		return false, err
 	}

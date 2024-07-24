@@ -469,7 +469,7 @@ var _ = Describe("Hazelcast CR", func() {
 				"hazelcast.query.optimizer.type":                               "NONE",
 			}
 			samplePropsWithDefaults := make(map[string]string)
-			for k, v := range hazelcast.DefaultProperties {
+			for k, v := range config.DefaultProperties {
 				samplePropsWithDefaults[k] = v
 			}
 			for k, v := range sampleProperties {

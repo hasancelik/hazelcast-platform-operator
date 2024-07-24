@@ -15,26 +15,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/mtls"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 )
 
 func Test_UcnReconciler_mtlsClientShouldBeRecreated(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 
 	nn, h, ucn := defaultCrsUCN()
 	hs, _ := json.Marshal(h.Spec)
 	h.ObjectMeta.Annotations = map[string]string{
 		n.LastSuccessfulSpecAnnotation: string(hs),
 	}
-	k8sClient := fakeK8sClient(h, ucn)
+	k8sClient := faketest.FakeK8sClient(h, ucn)
 
-	tlsConfig := setupTlsConfig(k8sClient, nn.Namespace)
+	tlsConfig := faketest.SetupTlsConfig(k8sClient, nn.Namespace)
 	defer ucnFakeMTLSHttpServer(tlsConfig)()
 
 	fakeHzClient, _, _ := defaultFakeClientAndService()
-	cr := &fakeHzClientRegistry{}
+	cr := &FakeHzClientRegistry{}
 	cr.Set(nn, &fakeHzClient)
 
 	r := NewUserCodeNamespaceReconciler(
@@ -93,7 +94,7 @@ func defaultCrsUCN() (types.NamespacedName, *hazelcastv1alpha1.Hazelcast, *hazel
 
 func ucnFakeMTLSHttpServer(tlsConfig *tls.Config) func() {
 
-	ts, err := fakeMtlsHttpServer(fmt.Sprintf("%s:%d", defaultMemberIP, hzclient.AgentPort),
+	ts, err := faketest.FakeMtlsHttpServer(fmt.Sprintf("%s:%d", defaultMemberIP, hzclient.AgentPort),
 		tlsConfig,
 		func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(200)

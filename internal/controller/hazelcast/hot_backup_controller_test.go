@@ -26,6 +26,7 @@ import (
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/kubeclient"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/mtls"
@@ -39,12 +40,12 @@ var (
 )
 
 func TestHotBackupReconciler_shouldBeSuccessful(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 	fakeHzClient, fakeHzStatusService, _ := defaultFakeClientAndService()
 
-	cr := &fakeHzClientRegistry{}
-	sr := &fakeHzStatusServiceRegistry{}
+	cr := &FakeHzClientRegistry{}
+	sr := &FakeHzStatusServiceRegistry{}
 	hr := mtls.NewHttpClientRegistry()
 	cr.Set(nn, &fakeHzClient)
 	sr.Set(nn, &fakeHzStatusService)
@@ -59,8 +60,8 @@ func TestHotBackupReconciler_shouldBeSuccessful(t *testing.T) {
 	}
 	cm.Data["hazelcast.yaml"] = cfg
 
-	k8sClient := fakeK8sClient([]client.Object{h, hb, cm}...)
-	defer defaultFakeMtlsHttpServer(setupTlsConfig(k8sClient, nn.Namespace))()
+	k8sClient := faketest.FakeK8sClient([]client.Object{h, hb, cm}...)
+	defer defaultFakeMtlsHttpServer(faketest.SetupTlsConfig(k8sClient, nn.Namespace))()
 
 	r := NewHotBackupReconciler(
 		k8sClient,
@@ -80,25 +81,25 @@ func TestHotBackupReconciler_shouldBeSuccessful(t *testing.T) {
 }
 
 func TestHotBackupReconciler_shouldSetStatusToFailedWhenHbCallFails(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 
 	fakeHzClient, fakeHzStatusService, _ := defaultFakeClientAndService()
-	fakeHzClient.tInvokeOnRandomTarget = func(ctx context.Context, req *hazelcast.ClientMessage, opts *hazelcast.InvokeOptions) (*hazelcast.ClientMessage, error) {
+	fakeHzClient.TInvokeOnRandomTarget = func(ctx context.Context, req *hazelcast.ClientMessage, opts *hazelcast.InvokeOptions) (*hazelcast.ClientMessage, error) {
 		if req.Type() == codec.MCTriggerHotRestartBackupCodecRequestMessageType {
 			return nil, fmt.Errorf("Backup trigger request failed")
 		}
 		return nil, nil
 	}
 
-	sr := &fakeHzStatusServiceRegistry{}
-	cr := &fakeHzClientRegistry{}
+	sr := &FakeHzStatusServiceRegistry{}
+	cr := &FakeHzClientRegistry{}
 	hr := mtls.NewHttpClientRegistry()
 	sr.Set(nn, &fakeHzStatusService)
 	cr.Set(nn, &fakeHzClient)
 
-	k8sClient := fakeK8sClient([]client.Object{h, hb}...)
-	defer defaultFakeMtlsHttpServer(setupTlsConfig(k8sClient, nn.Namespace))()
+	k8sClient := faketest.FakeK8sClient([]client.Object{h, hb}...)
+	defer defaultFakeMtlsHttpServer(faketest.SetupTlsConfig(k8sClient, nn.Namespace))()
 
 	r := NewHotBackupReconciler(
 		k8sClient,
@@ -118,20 +119,20 @@ func TestHotBackupReconciler_shouldSetStatusToFailedWhenHbCallFails(t *testing.T
 }
 
 func TestHotBackupReconciler_shouldSetStatusToFailedWhenTimedMemberStateFails(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 
 	fakeHzClient, fakeHzStatusService, mm := defaultFakeClientAndService()
-	fakeHzStatusService.timedMemberStateMap[mm[0].UUID].TimedMemberState.MemberState.HotRestartState.BackupTaskState = "FAILURE"
+	fakeHzStatusService.TimedMemberStateMap[mm[0].UUID].TimedMemberState.MemberState.HotRestartState.BackupTaskState = "FAILURE"
 
-	sr := &fakeHzStatusServiceRegistry{}
-	cr := &fakeHzClientRegistry{}
+	sr := &FakeHzStatusServiceRegistry{}
+	cr := &FakeHzClientRegistry{}
 	hr := mtls.NewHttpClientRegistry()
 	sr.Set(nn, &fakeHzStatusService)
 	cr.Set(nn, &fakeHzClient)
 
-	k8sClient := fakeK8sClient([]client.Object{h, hb}...)
-	defer defaultFakeMtlsHttpServer(setupTlsConfig(k8sClient, nn.Namespace))()
+	k8sClient := faketest.FakeK8sClient([]client.Object{h, hb}...)
+	defer defaultFakeMtlsHttpServer(faketest.SetupTlsConfig(k8sClient, nn.Namespace))()
 
 	r := NewHotBackupReconciler(
 		k8sClient,
@@ -151,7 +152,7 @@ func TestHotBackupReconciler_shouldSetStatusToFailedWhenTimedMemberStateFails(t 
 }
 
 func TestHotBackupReconciler_shouldNotTriggerHotBackupTwice(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 
 	var restCallWg sync.WaitGroup
@@ -159,7 +160,7 @@ func TestHotBackupReconciler_shouldNotTriggerHotBackupTwice(t *testing.T) {
 	var hotBackupTriggers int32
 
 	fakeHzClient, fakeHzStatusService, _ := defaultFakeClientAndService()
-	fakeHzClient.tInvokeOnRandomTarget = func(ctx context.Context, req *hazelcast.ClientMessage, opts *hazelcast.InvokeOptions) (*hazelcast.ClientMessage, error) {
+	fakeHzClient.TInvokeOnRandomTarget = func(ctx context.Context, req *hazelcast.ClientMessage, opts *hazelcast.InvokeOptions) (*hazelcast.ClientMessage, error) {
 		if req.Type() == codec.MCTriggerHotRestartBackupCodecRequestMessageType {
 			atomic.AddInt32(&hotBackupTriggers, 1)
 			restCallWg.Wait()
@@ -167,14 +168,14 @@ func TestHotBackupReconciler_shouldNotTriggerHotBackupTwice(t *testing.T) {
 		return nil, nil
 	}
 
-	sr := &fakeHzStatusServiceRegistry{}
-	cr := &fakeHzClientRegistry{}
+	sr := &FakeHzStatusServiceRegistry{}
+	cr := &FakeHzClientRegistry{}
 	hr := mtls.NewHttpClientRegistry()
 	sr.Set(nn, &fakeHzStatusService)
 	cr.Set(nn, &fakeHzClient)
 
-	k8sClient := fakeK8sClient([]client.Object{h, hb}...)
-	defer defaultFakeMtlsHttpServer(setupTlsConfig(k8sClient, nn.Namespace))()
+	k8sClient := faketest.FakeK8sClient([]client.Object{h, hb}...)
+	defer defaultFakeMtlsHttpServer(faketest.SetupTlsConfig(k8sClient, nn.Namespace))()
 
 	r := NewHotBackupReconciler(
 		k8sClient,
@@ -208,19 +209,19 @@ func TestHotBackupReconciler_shouldNotTriggerHotBackupTwice(t *testing.T) {
 }
 
 func TestHotBackupReconciler_shouldCancelContextIfHotbackupCRIsDeleted(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 
 	fakeHzClient, fakeHzStatusService, _ := defaultFakeClientAndService()
 
-	cr := &fakeHzClientRegistry{}
-	sr := &fakeHzStatusServiceRegistry{}
+	cr := &FakeHzClientRegistry{}
+	sr := &FakeHzStatusServiceRegistry{}
 	hr := mtls.NewHttpClientRegistry()
 	cr.Set(nn, &fakeHzClient)
 	sr.Set(nn, &fakeHzStatusService)
 
-	k8sClient := fakeK8sClient([]client.Object{h, hb}...)
-	defer defaultFakeMtlsHttpServer(setupTlsConfig(k8sClient, nn.Namespace))()
+	k8sClient := faketest.FakeK8sClient([]client.Object{h, hb}...)
+	defer defaultFakeMtlsHttpServer(faketest.SetupTlsConfig(k8sClient, nn.Namespace))()
 
 	r := NewHotBackupReconciler(
 		k8sClient,
@@ -246,16 +247,16 @@ func TestHotBackupReconciler_shouldCancelContextIfHotbackupCRIsDeleted(t *testin
 }
 
 func TestHotBackupReconciler_shouldNotSetStatusToFailedIfHazelcastCRNotFound(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, _, hb := defaultCRs()
 
 	r := NewHotBackupReconciler(
-		fakeK8sClient([]client.Object{hb}...),
+		faketest.FakeK8sClient([]client.Object{hb}...),
 		ctrl.Log.WithName("test").WithName("Hazelcast"),
 		nil,
 		mtls.NewHttpClientRegistry(),
-		&fakeHzClientRegistry{},
-		&fakeHzStatusServiceRegistry{},
+		&FakeHzClientRegistry{},
+		&FakeHzStatusServiceRegistry{},
 	)
 	_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nn})
 	if err != nil {
@@ -267,7 +268,7 @@ func TestHotBackupReconciler_shouldNotSetStatusToFailedIfHazelcastCRNotFound(t *
 }
 
 func TestHotBackupReconciler_shouldFailIfPersistenceNotEnabledAtHazelcast(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 	h.Spec = hazelcastv1alpha1.HazelcastSpec{}
 	hs, _ := json.Marshal(h.Spec)
@@ -276,12 +277,12 @@ func TestHotBackupReconciler_shouldFailIfPersistenceNotEnabledAtHazelcast(t *tes
 	}
 
 	r := NewHotBackupReconciler(
-		fakeK8sClient([]client.Object{h, hb}...),
+		faketest.FakeK8sClient([]client.Object{h, hb}...),
 		ctrl.Log.WithName("test").WithName("Hazelcast"),
 		nil,
 		mtls.NewHttpClientRegistry(),
-		&fakeHzClientRegistry{},
-		&fakeHzStatusServiceRegistry{},
+		&FakeHzClientRegistry{},
+		&FakeHzStatusServiceRegistry{},
 	)
 	_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nn})
 	if err == nil {
@@ -296,7 +297,7 @@ func TestHotBackupReconciler_shouldFailIfPersistenceNotEnabledAtHazelcast(t *tes
 }
 
 func TestHotBackupReconciler_shouldFailIfDeletedWhenReferencedByHazelcastRestore(t *testing.T) {
-	RegisterFailHandler(fail(t))
+	RegisterFailHandler(faketest.Fail(t))
 	nn, h, hb := defaultCRs()
 
 	// set it as deleted
@@ -320,12 +321,12 @@ func TestHotBackupReconciler_shouldFailIfDeletedWhenReferencedByHazelcastRestore
 	}
 
 	r := NewHotBackupReconciler(
-		fakeK8sClient([]client.Object{h, hb}...),
+		faketest.FakeK8sClient([]client.Object{h, hb}...),
 		ctrl.Log.WithName("test").WithName("Hazelcast"),
 		nil,
 		mtls.NewHttpClientRegistry(),
-		&fakeHzClientRegistry{},
-		&fakeHzStatusServiceRegistry{},
+		&FakeHzClientRegistry{},
+		&FakeHzStatusServiceRegistry{},
 	)
 
 	// setup and start kubeclient for validator
@@ -344,7 +345,7 @@ func TestHotBackupReconciler_shouldFailIfDeletedWhenReferencedByHazelcastRestore
 	Expect(hb.Status.Message).Should(ContainSubstring(fmt.Sprintf("Hazelcast '%s' has a restore reference to the Hotbackup", h.Name)))
 }
 
-func defaultFakeClientAndService() (fakeHzClient, fakeHzStatusService, []cluster.MemberInfo) {
+func defaultFakeClientAndService() (faketest.FakeHzClient, FakeHzStatusService, []cluster.MemberInfo) {
 	defaultMemberAddress := cluster.Address(defaultMemberIP + ":5701")
 	mm := []cluster.MemberInfo{
 		{
@@ -361,17 +362,17 @@ func defaultFakeClientAndService() (fakeHzClient, fakeHzStatusService, []cluster
 		},
 	}
 
-	fakeHzClient := fakeHzClient{
-		tOrderedMembers:          mm,
-		tIsClientConnected:       true,
-		tAreAllMembersAccessible: true,
-		tRunning:                 true,
+	fakeHzClient := faketest.FakeHzClient{
+		TOrderedMembers:          mm,
+		TIsClientConnected:       true,
+		TAreAllMembersAccessible: true,
+		TRunning:                 true,
 	}
 
 	timedMemberState := &codecTypes.TimedMemberStateWrapper{}
 	timedMemberState.TimedMemberState.MemberState.HotRestartState.BackupTaskState = "SUCCESS"
-	fakeHzStatusService := fakeHzStatusService{
-		timedMemberStateMap: map[clientTypes.UUID]*codecTypes.TimedMemberStateWrapper{
+	fakeHzStatusService := FakeHzStatusService{
+		TimedMemberStateMap: map[clientTypes.UUID]*codecTypes.TimedMemberStateWrapper{
 			mm[0].UUID: timedMemberState,
 			mm[1].UUID: timedMemberState,
 			mm[2].UUID: timedMemberState,
@@ -427,7 +428,7 @@ func defaultCRs() (types.NamespacedName, *hazelcastv1alpha1.Hazelcast, *hazelcas
 }
 
 func defaultFakeMtlsHttpServer(tlsConfig *tls.Config) func() {
-	ts, err := fakeMtlsHttpServer(fmt.Sprintf("%s:%d", defaultMemberIP, hzclient.AgentPort),
+	ts, err := faketest.FakeMtlsHttpServer(fmt.Sprintf("%s:%d", defaultMemberIP, hzclient.AgentPort),
 		tlsConfig,
 		func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(200)

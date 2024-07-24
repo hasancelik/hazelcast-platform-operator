@@ -16,6 +16,7 @@ import (
 	controllers "github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/util"
 )
 
@@ -137,7 +138,7 @@ func (r *WanSyncReconciler) runWanSyncJobs(ctx context.Context, maps map[string]
 				"name", m.Name, "namespace", m.Namespace)
 			wsrs = append(wsrs, hzclient.NewWanSyncMapRequest(
 				types.NamespacedName{Name: hzResourceName, Namespace: wan.Namespace},
-				wan.Name, m.MapName(), wanName(m.MapName()), wr.PublisherId(m.Name)))
+				wan.Name, m.MapName(), codecTypes.DefaultWanReplicationRefName(m.MapName()), wr.PublisherId(m.Name)))
 		}
 	}
 	if len(wsrs) == 0 {

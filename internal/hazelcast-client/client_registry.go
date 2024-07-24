@@ -10,9 +10,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
 )
 
 type ClientRegistry interface {
@@ -60,7 +62,22 @@ func (cr *HazelcastClientRegistry) GetOrCreate(ctx context.Context, nn types.Nam
 			certificate = &cert
 		}
 	}
-	c, err := NewClient(ctx, BuildConfig(h, pool, certificate, hzLogger))
+	cfg := BuildConfig(h, pool, certificate, hzLogger)
+	if h.Spec.CustomConfig.IsEnabled() {
+		customCfg, _, err := config.ReadCustomConfigYAML(ctx, cr.K8sClient, h)
+		if err != nil {
+			return nil, err
+		}
+		usr, err := config.CheckAndFetchUserPermissions(customCfg)
+		if err != nil {
+			return nil, err
+		}
+		if len(usr) != 0 {
+			cfg.Cluster.Security.Credentials.Username = usr["username"].(string)
+			cfg.Cluster.Security.Credentials.Password = usr["password"].(string)
+		}
+	}
+	c, err := NewClient(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
