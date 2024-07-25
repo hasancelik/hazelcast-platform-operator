@@ -139,6 +139,7 @@ jobs:
       PHONE_HOME_ENABLED: true
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       RELEASE_NAME: hp-ee-${{ github.run_id }}
+      STORAGE_CLASS: standard-rwo
 
     steps:
       - name: Checkout
@@ -200,7 +201,7 @@ jobs:
       - name: Run Hazelcast Phone Home tests at GKE
         id: ph-test
         run: |
-          make test-ph NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=ph
+          make test-ph NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=ph STORAGE_CLASS=$STORAGE_CLASS
 
       - name: Clean up after Tests
         if: always()
