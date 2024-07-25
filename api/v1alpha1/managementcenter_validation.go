@@ -74,7 +74,7 @@ func (v *managementCenterValidator) ValidateNotUpdatableMcPersistenceFields(curr
 	if current.ExistingVolumeClaimName != last.ExistingVolumeClaimName {
 		v.Forbidden(Path("spec", "persistence", "existingVolumeClaimName"), "field cannot be updated")
 	}
-	if *current.StorageClass != *last.StorageClass {
+	if !reflect.DeepEqual(current.StorageClass, last.StorageClass) {
 		v.Forbidden(Path("spec", "persistence", "storageClass"), "field cannot be updated")
 	}
 	if !reflect.DeepEqual(current.Size, last.Size) {
