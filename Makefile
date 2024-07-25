@@ -412,8 +412,8 @@ olm-deploy: opm operator-sdk ## Deploying Operator with OLM bundle. Available mo
 	echo -e "apiVersion: operators.coreos.com/v1alpha1\nkind: Subscription\nmetadata:\n  name: hazelcast-operator-sub\n  namespace: operators\nspec:\n  channel: stable-v$(VERSION)\n  installPlanApproval: Automatic\n  name: hazelcast-platform-operator\n  source: cn-catalog\n  sourceNamespace: operators\n  startingCSV: hazelcast-platform-operator.v$(VERSION).0" > cn-subscription.yaml
 
 	$(KUBECTL) apply -f cn-subscription.yaml
-	sleep 60
-	$(KUBECTL) rollout status -w deployment.apps/hazelcast-platform-controller-manager --namespace operators --timeout=60s
+	sleep 90
+	$(KUBECTL) rollout status -w deployment.apps/hazelcast-platform-controller-manager --namespace operators --timeout=120s
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
