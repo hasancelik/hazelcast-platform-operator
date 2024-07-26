@@ -378,7 +378,7 @@ jobs:
 
       - uses: redhat-actions/openshift-tools-installer@v1
         with:
-          opm: "latest"
+          opm: "4.16.4"
           skip_cache: true
 
       - name: Configure AWS Credentials
