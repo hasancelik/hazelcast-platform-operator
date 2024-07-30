@@ -60,6 +60,12 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 		waitForMapSizePortForward(context.Background(), restoredHz, localPort, m.MapName(), mapSize, 1*Minute)
 	}
 
+	skipIfIstioSetup := func() {
+		if isIstioSetup() {
+			Skip("skipping suites in Istio setup")
+		}
+	}
+
 	AfterEach(func() {
 		GinkgoWriter.Printf("Aftereach start time is %v\n", Now().String())
 		if skipCleanup() {
@@ -125,6 +131,8 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 		})
 
 		It("is interrupted when the HotBackup CR is deleted", Tag(Kind|AnyCloud), func() {
+			skipIfIstioSetup()
+
 			setLabelAndCRName("br-3")
 			ctx := context.Background()
 			bucketURI := "gs://operator-e2e-external-backup"
@@ -273,6 +281,8 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 		})
 
 		It("should backup and restore in sequence successfully", Tag(AnyCloud), func() {
+			skipIfIstioSetup()
+
 			setLabelAndCRName("br-6")
 			var mapSizeInMb = 1072
 			var additionalEntries = 111
@@ -380,6 +390,8 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 		})
 
 		It("should restore 3 GB from an external backup using a GCP bucket", Tag(AnyCloud), func() {
+			skipIfIstioSetup()
+
 			setLabelAndCRName("br-8")
 			ctx := context.Background()
 			var mapSizeInMb = 3072

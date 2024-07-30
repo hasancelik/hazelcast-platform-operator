@@ -36,7 +36,7 @@ jobs:
             GKE_SA_KEY,CN/GKE_SA_KEY
 
       - name: Authenticate to GCP
-        uses: 'google-github-actions/auth@v2.1.3'
+        uses: "google-github-actions/auth@v2.1.3"
         with:
           credentials_json: ${{ env.GKE_SA_KEY }}
 
@@ -49,7 +49,7 @@ jobs:
             --zone=${{ env.GKE_ZONE }} \
             --project=${{ env.GCP_PROJECT_ID }} \
             --network=${{ env.GCP_NETWORK }} \
-            --machine-type=n1-standard-2 \
+            --machine-type=n1-standard-16 \
             --workload-pool=${{ env.GCP_PROJECT_ID }}.svc.id.goog \
             --num-nodes=3
           sleep 30
@@ -66,6 +66,13 @@ jobs:
           gcloud compute firewall-rules update ${FIREWALL_RULE_NAME} \
           --source-ranges="192.0.2.0/24" \
           --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Ensure Service Account allows using Workload Identity
+        run: |-
+          gcloud iam service-accounts add-iam-policy-binding cn-workload-identity-test@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --role roles/iam.workloadIdentityUser \
+            --member "serviceAccount:${{ env.GCP_PROJECT_ID }}.svc.id.goog[test-operator/cn-workload-identity-test]"
 
   grafana-setup:
     needs: [create-gke-cluster]
@@ -231,7 +238,7 @@ jobs:
           make install-operator IMG=$IMG NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME
           kubectl rollout status deployment $DEPLOY_NAME
 
-      - name: Create secrets
+      - name: Create secrets and service accounts
         run: |
           kubectl create secret generic hazelcast-license-key \
             --namespace ${{ env.NAMESPACE }} --from-literal=license-key=${{ env.HZ_LICENSE_KEY }}
@@ -246,6 +253,10 @@ jobs:
             --from-literal=storage-key=${{ env.AZURE_STORAGE_KEY }}
 
           kubectl create secret generic br-secret-gcp --namespace ${NAMESPACE} --from-literal=google-credentials-path='${{ env.GKE_SA_KEY }}'
+
+          kubectl create serviceaccount cn-workload-identity-test --namespace ${NAMESPACE}
+          kubectl annotate serviceaccount cn-workload-identity-test --namespace ${NAMESPACE} \
+            iam.gke.io/gcp-service-account=cn-workload-identity-test@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
       - name: Run Hazelcast E2E tests at GKE
         id: e2e-test
