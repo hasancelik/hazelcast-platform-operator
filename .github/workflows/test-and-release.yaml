@@ -123,7 +123,7 @@ jobs:
             exposeExternally:
               discoveryServiceType: LoadBalancer
               memberAccess: NodePortExternalIP
-            licenseKeySecret: hazelcast-license-key
+            licenseKeySecretName: hazelcast-license-key
             persistence:
               clusterDataRecoveryPolicy: "PartialRecoveryMostComplete"
               pvc:
@@ -151,7 +151,7 @@ jobs:
             name: managementcenter
           spec:
             repository: 'hazelcast/management-center'
-            licenseKeySecret: hazelcast-license-key
+            licenseKeySecretName: hazelcast-license-key
             hazelcastClusters:
               - address: hazelcast
                 name: dev
