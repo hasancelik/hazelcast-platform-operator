@@ -1,7 +1,2 @@
 request-property-max-set
 request-property-min-set
-hazelcast.hazelcast.com the request property 'spec.licenseKeySecretName' became required
-hazelcast.hazelcast.com the 'spec.licenseKeySecretName' request property's minLength was increased from '0' to '1'
-managementcenter.hazelcast.com the request property 'spec.licenseKeySecretName' became required
-managementcenter.hazelcast.com the 'spec.licenseKeySecretName' request property's minLength was increased from '0' to '1'
-hazelcast.hazelcast.com request property 'spec.advancedNetwork.wan.items.serviceType' was restricted to a list of enum values
