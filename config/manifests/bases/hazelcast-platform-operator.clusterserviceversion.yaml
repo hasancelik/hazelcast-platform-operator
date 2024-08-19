@@ -99,8 +99,6 @@ spec:
       name: wansyncs.hazelcast.com
       version: v1alpha1
   description: |
-    # Hazelcast Platform Operator #
-
     Easily deploy Hazelcast clusters and Management Center into Kubernetes environments and manage their lifecycles.
 
     ## Before You Start
