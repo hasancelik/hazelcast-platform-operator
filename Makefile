@@ -372,12 +372,14 @@ bundle: operator-sdk manifests kustomize yq ## Generate bundle manifests and met
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	($(YQ) 'select(.kind == "ClusterRole")  | .' config/rbac/role.yaml && \
-	 echo "---" && \
-	 $(YQ)  eval-all '. | select(.kind == "Role" ) | . as $$item ireduce ({}; . *+ $$item) '  config/rbac/role.yaml) > config/rbac/role.yaml.new && mv config/rbac/role.yaml.new config/rbac/role.yaml
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --use-image-digests --overwrite --default-channel stable-v$(BUNDLE_VERSION) --version $(BUNDLE_VERSION) $(BUNDLE_METADATA_OPTS)
+	echo "---" && \
+	$(YQ)  eval-all '. | select(.kind == "Role" ) | . as $$item ireduce ({}; . *+ $$item) '  config/rbac/role.yaml) > config/rbac/role.yaml.new && mv config/rbac/role.yaml.new config/rbac/role.yaml
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --use-image-digests --overwrite $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL) --version $(BUNDLE_VERSION)
 	$(MAKE) manifests # Revert changes done for generating bundle
-	sed -i "s|containerImage: REPLACE_IMG|containerImage: $(IMG)|" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
-	sed -i "s|createdAt: REPLACE_DATE|createdAt: \"$$(date +%F)T11:59:59Z\"|" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
+	@IMAGE=$$(yq e '.spec.install.spec.deployments[0].spec.template.spec.containers[0].image' bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml); \
+	$(YQ) eval -i ".metadata.annotations.containerImage = \"$${IMAGE}\"" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
+	$(YQ) -i ".metadata.annotations.createdAt = \"$$(date +%F)T11:59:59Z\"" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
+	$(YQ) -i ".annotations.\"com.redhat.openshift.versions\" = \"v4.8\"" bundle/metadata/annotations.yaml
 	$(MAKE) prepend-yaml-header
 	$(OPERATOR_SDK) bundle validate ./bundle --select-optional suite=operatorframework
 
@@ -410,10 +412,10 @@ olm-deploy: opm operator-sdk ## Deploying Operator with OLM bundle. Available mo
 
 	$(KUBECTL) apply -f cn-group.yaml
 
-	echo -e "apiVersion: operators.coreos.com/v1alpha1\nkind: Subscription\nmetadata:\n  name: hazelcast-operator-sub\n  namespace: operators\nspec:\n  channel: stable-v$(VERSION)\n  installPlanApproval: Automatic\n  name: hazelcast-platform-operator\n  source: cn-catalog\n  sourceNamespace: operators\n  startingCSV: hazelcast-platform-operator.v$(VERSION).0" > cn-subscription.yaml
+	echo -e "apiVersion: operators.coreos.com/v1alpha1\nkind: Subscription\nmetadata:\n  name: hazelcast-operator-sub\n  namespace: operators\nspec:\n  channel: $(CHANNELS)\n  installPlanApproval: Automatic\n  name: hazelcast-platform-operator\n  source: cn-catalog\n  sourceNamespace: operators\n  startingCSV: hazelcast-platform-operator.v$(VERSION).0" > cn-subscription.yaml
 
 	$(KUBECTL) apply -f cn-subscription.yaml
-	sleep 90
+	sleep 100
 	$(KUBECTL) rollout status -w deployment.apps/hazelcast-platform-controller-manager --namespace operators --timeout=120s
 
 .PHONY: bundle-build

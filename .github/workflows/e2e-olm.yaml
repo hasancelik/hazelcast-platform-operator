@@ -13,6 +13,8 @@ env:
   FIREWALL_RULE_NAME: node-port-range
   NAMESPACE: test-operator
   GROUP_NAMESPACE: hazelcast
+  CHANNELS: stable-v1.0
+  DEFAULT_CHANNEL: stable-v1.0
 
 jobs:
   create-gke-cluster:
@@ -138,7 +140,7 @@ jobs:
 
       - name: Deploy Operator
         run: |
-          make olm-deploy VERSION=1.0
+          make olm-deploy VERSION=1.0 DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
 
   gke-e2e-tests:
     name: Run e2e test on GKE

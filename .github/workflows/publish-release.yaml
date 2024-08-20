@@ -12,6 +12,8 @@ env:
   PUBLISH_TIMEOUT_IN_MINS: "60"
   GRADE_CHECK_TIMEOUT_IN_MINS: "20"
   AWS_REGION: us-east-1
+  CHANNELS: alpha
+  DEFAULT_CHANNEL: alpha
 
 jobs:
   publish_docker_image:
@@ -20,7 +22,6 @@ jobs:
     outputs:
       RELEASE_VERSION: ${{ steps.set-outputs.outputs.RELEASE_VERSION }}
       IMAGE_NAME: ${{ steps.set-outputs.outputs.IMAGE_NAME }}
-      IMAGE_DIGEST: ${{ steps.push-operator-image.outputs.IMAGE_DIGEST }}
       BUNDLE_RELEASE_VERSION: ${{ steps.set-outputs.outputs.BUNDLE_RELEASE_VERSION }}
     steps:
       - name: Configure AWS Credentials
@@ -84,9 +85,6 @@ jobs:
         id: push-operator-image
         run: |
           make docker-push docker-push-latest IMG="${IMAGE_NAME}"
-          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE_NAME} | cut -d'@' -f2)
-          echo "IMAGE_DIGEST=${IMAGE_DIGEST}" >> $GITHUB_ENV
-          echo "IMAGE_DIGEST=${IMAGE_DIGEST}" >> $GITHUB_OUTPUT
 
   publish_image_to_redhat:
     name: Certify and Publish Container Image to Red Hat
@@ -166,8 +164,8 @@ jobs:
       REPO_NAME: ${{ matrix.repo-name }}
       REPO_OWNER: ${{ matrix.repo-owner }}
       RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.RELEASE_VERSION }}
-      IMAGE_DIGEST: ${{ needs.publish_docker_image.outputs.IMAGE_DIGEST }}
       BUNDLE_RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.BUNDLE_RELEASE_VERSION }}
+      IMAGE_NAME: ${{ needs.publish_docker_image.outputs.IMAGE_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -187,13 +185,7 @@ jobs:
 
       - name: Build Red Hat Bundle
         run: |
-          IMAGE_NAME_DIGEST=docker.io/hazelcast/${OPERATOR_NAME}@${IMAGE_DIGEST}
-          make bundle IMG=${IMAGE_NAME_DIGEST} VERSION=${RELEASE_VERSION}
-          cat >> ./bundle/metadata/annotations.yaml <<EOF
-            # OpenShift annotations.
-            com.redhat.openshift.versions: v4.8
-            operators.operatorframework.io.bundle.channel.default.v1: alpha
-          EOF
+          make bundle IMG=${IMAGE_NAME} VERSION=${RELEASE_VERSION} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
 
       - name: Validate Bundle for OCP
         run: |

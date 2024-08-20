@@ -16,6 +16,8 @@ env:
   GAR_REPO: hazelcast-platform-operator
   GKE_ZONE: us-east1-b
   AWS_REGION: us-east-1
+  CHANNELS: alpha
+  DEFAULT_CHANNEL: alpha
 
 jobs:
   migration-test:
@@ -204,7 +206,6 @@ jobs:
     outputs:
       RELEASE_VERSION: ${{ steps.setup-envs.outputs.RELEASE_VERSION }}
       CONTAINER_IMAGE: ${{ steps.setup-envs.outputs.CONTAINER_IMAGE }}
-      CONTAINER_IMAGE_DIGEST: ${{ steps.build-image.outputs.digest }}
       REFS: ${{ steps.setup-envs.outputs.ref }}
     steps:
       - name: Checkout to hazelcast-operator
@@ -357,7 +358,6 @@ jobs:
         shell: bash
     env:
       CONTAINER_IMAGE: ${{ needs.test_container.outputs.CONTAINER_IMAGE }}
-      CONTAINER_IMAGE_DIGEST: ${{ needs.test_container.outputs.CONTAINER_IMAGE_DIGEST }}
       RELEASE_VERSION: ${{ needs.test_container.outputs.RELEASE_VERSION }}
     outputs:
       BUNDLE_VERSION: ${{ steps.build-bundle-outputs.outputs.BUNDLE_VERSION }}
@@ -418,13 +418,7 @@ jobs:
 
       - name: Build Bundle
         run: |
-          IMAGE_NAME_DIGEST=${CONTAINER_IMAGE}@${CONTAINER_IMAGE_DIGEST}
-          make bundle IMG=${IMAGE_NAME_DIGEST} VERSION=${RELEASE_VERSION}
-          cat >> ./bundle/metadata/annotations.yaml <<EOF
-            # OpenShift annotations.
-            com.redhat.openshift.versions: v4.8
-            operators.operatorframework.io.bundle.channel.default.v1: alpha
-          EOF
+          make bundle IMG=${CONTAINER_IMAGE} VERSION=${RELEASE_VERSION} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
 
       - name: Upload Bundle Artifacts
         uses: actions/upload-artifact@v3
