@@ -329,7 +329,8 @@ jobs:
           REPLACED_VERSION=$(echo "$RELEASE_VERSION" | awk -F'.' '{print $1"."$2+1".0"}')
           echo "REPLACED_VERSION=${REPLACED_VERSION}" >> $GITHUB_ENV
           echo "REPLACED_VERSION=${REPLACED_VERSION}" >> $GITHUB_OUTPUT
-          sed -i -E -e 's/(version: ).*/\1"'$REPLACED_VERSION-snapshot'"/' -e 's/(appVersion: ).*/\1"'$REPLACED_VERSION-snapshot'"/' charts/hazelcast-platform-operator-crds/Chart.yaml Chart.yaml
+          yq -i ".version = \"${REPLACED_VERSION}-snapshot\" | .appVersion = \"${REPLACED_VERSION}-snapshot\"" charts/hazelcast-platform-operator-crds/Chart.yaml
+          yq -i ".version = \"${REPLACED_VERSION}-snapshot\" | .appVersion = \"${REPLACED_VERSION}-snapshot\" | .dependencies[0].version = \"${REPLACED_VERSION}-snapshot\"" Chart.yaml
 
       - name: Commit and Push Changes
         working-directory: helm-charts/hazelcast-platform-operator
@@ -337,6 +338,9 @@ jobs:
           git config user.email "devopshelm@hazelcast.com"
           git config user.name "devOpsHelm"
           BRANCH_NAME=update-helm-chart-to-${REPLACED_VERSION}
+          git fetch origin
+          git checkout main
+          git pull origin main
           git checkout -b $BRANCH_NAME
           git add .
           git commit --signoff -m "$(echo -e "Update helm chart to ${REPLACED_VERSION} version")"
@@ -402,6 +406,7 @@ jobs:
 
       - name: Enable Auto-Merge For Bundle PR's
         if: always() && matrix.repo-name == 'certified-operators' || matrix.repo-name == 'community-operators'
+        working-directory: ${{ env.REPO_NAME }}
         run: |
           echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
           git config user.email "devopshelm@hazelcast.com"
@@ -429,6 +434,7 @@ jobs:
 
       - name: Merge Helm Chart PR
         if: always() && matrix.repo-name == 'hazelcast-platform-operator'
+        working-directory: ${{ env.REPO_NAME }}
         run: |
           echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
           REPLACED_VERSION=$(echo "$RELEASE_VERSION" | awk -F'.' '{print $1"."$2+1".0"}')

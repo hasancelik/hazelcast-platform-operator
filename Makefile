@@ -378,6 +378,7 @@ bundle: operator-sdk manifests kustomize yq ## Generate bundle manifests and met
 	$(MAKE) manifests # Revert changes done for generating bundle
 	sed -i "s|containerImage: REPLACE_IMG|containerImage: $(IMG)|" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
 	sed -i "s|createdAt: REPLACE_DATE|createdAt: \"$$(date +%F)T11:59:59Z\"|" bundle/manifests/hazelcast-platform-operator.clusterserviceversion.yaml
+	$(MAKE) prepend-yaml-header
 	$(OPERATOR_SDK) bundle validate ./bundle --select-optional suite=operatorframework
 
 olm-deploy: opm operator-sdk ## Deploying Operator with OLM bundle. Available modes are AllNamespace|OwnNamespace|SingleNamespace
@@ -564,3 +565,11 @@ GOBIN=$(dir $(1)) CGO_ENABLED=0 go install $(2) &> /dev/null ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+.PHONY: prepend-yaml-header
+prepend-yaml-header:
+	for crd in bundle/manifests/*.yaml; do \
+		if ! grep -q "^---" "$$crd"; then \
+			echo "---" | cat - "$$crd" > tmp-crds.yaml && mv tmp-crds.yaml "$$crd"; \
+		fi; \
+	done

@@ -167,23 +167,27 @@ delete_container_image()
     IMAGE_ID=$(curl -X 'GET' --silent \
     -H "X-API-KEY: $RHEL_API_KEY" \
     -H 'Content-Type: application/json' \
-    "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" | jq -r 'del(.data[] | select(.status =="completed" and (.operation == "sync-tags")|not))|.data[-1].image_id')
+    "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" | jq -r '.data | map(select(.status == "completed" and .operation == "sync-tags" and (.creation_date | split("T")[0] == (now | strftime("%Y-%m-%d"))))) | last | select(.) | .image_id')
 
-    echo "Unpublishing certified image..."
-    curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
-    -H 'content-type: application/json' \
-    -H "X-API-KEY: $RHEL_API_KEY" \
-    --data-raw '{"image_id":"'$IMAGE_ID'","operation":"unpublish"}' \
-    --compressed
+    if [ -n "$IMAGE_ID" ]; then
+        echo "Unpublishing certified image..."
+        curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
+        -H 'content-type: application/json' \
+        -H "X-API-KEY: $RHEL_API_KEY" \
+        --data-raw '{"image_id":"'$IMAGE_ID'","operation":"unpublish"}' \
+        --compressed
 
-    wait_for_container_unpublish $PROJECT_ID $VERSION $RHEL_API_KEY $TIMEOUT_IN_MINS
+        wait_for_container_unpublish $PROJECT_ID $VERSION $RHEL_API_KEY $TIMEOUT_IN_MINS
 
-    echo "Deleting certified image..."
-    curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
-    -H 'content-type: application/json' \
-    -H "X-API-KEY: $RHEL_API_KEY" \
-    --data-raw '{"image_id":"'$IMAGE_ID'","operation":"delete"}' \
-    --compressed
+        echo "Deleting certified image..."
+        curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
+        -H 'content-type: application/json' \
+        -H "X-API-KEY: $RHEL_API_KEY" \
+        --data-raw '{"image_id":"'$IMAGE_ID'","operation":"delete"}' \
+        --compressed
+    else
+        echo "No image to unpublish and delete."
+    fi
 }
 
 # The function waits until all Elastic Load Balancers attached to EC2 instances (under the current Kubernetes context) are deleted. Takes a single argument - timeout.
