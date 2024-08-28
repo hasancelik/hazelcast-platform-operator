@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -501,7 +501,7 @@ func (v *hazelcastValidator) validateCPSubsystem(h *Hazelcast) {
 	}
 
 	cp := h.Spec.CPSubsystem
-	memberSize := pointer.Int32Deref(h.Spec.ClusterSize, 3)
+	memberSize := ptr.Deref(h.Spec.ClusterSize, 3)
 	if memberSize != 0 && memberSize != 3 && memberSize != 5 && memberSize != 7 {
 		v.Invalid(Path("spec", "clusterSize"), h.Spec.ClusterSize, "cluster with CP Subsystem enabled can have 3, 5, or 7 members")
 	}
@@ -513,9 +513,9 @@ func (v *hazelcastValidator) validateCPSubsystem(h *Hazelcast) {
 }
 
 func (v *hazelcastValidator) validateSessionTTLSeconds(cp *CPSubsystem) {
-	ttl := pointer.Int32Deref(cp.SessionTTLSeconds, 300)
-	heartbeat := pointer.Int32Deref(cp.SessionHeartbeatIntervalSeconds, 5)
-	autoremoval := pointer.Int32Deref(cp.MissingCpMemberAutoRemovalSeconds, 14400)
+	ttl := ptr.Deref(cp.SessionTTLSeconds, 300)
+	heartbeat := ptr.Deref(cp.SessionHeartbeatIntervalSeconds, 5)
+	autoremoval := ptr.Deref(cp.MissingCpMemberAutoRemovalSeconds, 14400)
 	if ttl <= heartbeat {
 		v.Invalid(Path("spec", "cpSubsystem", "sessionTTLSeconds"), ttl, "must be greater than sessionHeartbeatIntervalSeconds")
 	}
@@ -525,13 +525,13 @@ func (v *hazelcastValidator) validateSessionTTLSeconds(cp *CPSubsystem) {
 }
 
 func isScaledNotPaused(current *HazelcastSpec, last *HazelcastSpec) bool {
-	newSize := pointer.Int32Deref(current.ClusterSize, 3)
-	oldSize := pointer.Int32Deref(last.ClusterSize, 3)
+	newSize := ptr.Deref(current.ClusterSize, 3)
+	oldSize := ptr.Deref(last.ClusterSize, 3)
 	return newSize != 0 && oldSize != 0 && newSize != oldSize
 }
 
 func isRevertedToOldSize(h *Hazelcast) bool {
-	newSize := pointer.Int32Deref(h.Spec.ClusterSize, 3)
+	newSize := ptr.Deref(h.Spec.ClusterSize, 3)
 	return newSize == h.Status.ClusterSize
 }
 

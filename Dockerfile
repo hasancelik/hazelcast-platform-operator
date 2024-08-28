@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.21 AS builder
+FROM golang:1.22.5 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -13,6 +13,7 @@ RUN go mod download
 COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
+COPY agent/ agent/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -tags hazelcastinternal -a -o manager cmd/main.go

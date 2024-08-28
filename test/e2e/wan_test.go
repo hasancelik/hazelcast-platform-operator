@@ -8,14 +8,13 @@ import (
 
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
@@ -151,7 +150,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 				Namespace: hzSrcLookupKey.Namespace,
 			}, labels)
 			hzSourceCr.Spec.ClusterName = hzSource
-			hzSourceCr.Spec.ClusterSize = pointer.Int32(1)
+			hzSourceCr.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCRWithoutCheck(hzSourceCr)
 			evaluateReadyMembers(types.NamespacedName{Name: hzSource, Namespace: hzSrcLookupKey.Namespace})
 
@@ -160,7 +159,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 				Namespace: hzSrcLookupKey.Namespace,
 			}, labels)
 			hzTargetCr.Spec.ClusterName = hzTarget
-			hzTargetCr.Spec.ClusterSize = pointer.Int32(1)
+			hzTargetCr.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCRWithoutCheck(hzTargetCr)
 			evaluateReadyMembers(types.NamespacedName{Name: hzTarget, Namespace: hzTrgLookupKey.Namespace})
 
@@ -396,7 +395,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 				Namespace: hzSrcLookupKey.Namespace,
 			}, labels)
 			hzSourceCr.Spec.ClusterName = hzSource
-			hzSourceCr.Spec.ClusterSize = pointer.Int32(1)
+			hzSourceCr.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCRWithoutCheck(hzSourceCr)
 			evaluateReadyMembers(types.NamespacedName{Name: hzSource, Namespace: hzSrcLookupKey.Namespace})
 
@@ -405,7 +404,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 				Namespace: hzSrcLookupKey.Namespace,
 			}, labels)
 			hzTargetCr.Spec.ClusterName = hzTarget
-			hzTargetCr.Spec.ClusterSize = pointer.Int32(1)
+			hzTargetCr.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCRWithoutCheck(hzTargetCr)
 			evaluateReadyMembers(types.NamespacedName{Name: hzTarget, Namespace: hzTrgLookupKey.Namespace})
 

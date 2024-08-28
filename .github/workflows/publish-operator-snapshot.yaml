@@ -1,0 +1,99 @@
+name: Publish Operator Snapshot
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  publish-snapshot-image:
+    name: Publish Snapshot to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Operator Image
+        run: make docker-build IMG="hazelcast/hazelcast-platform-operator:latest-snapshot" VERSION="latest-snapshot"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            DOCKERHUB_USERNAME,CN/DOCKERHUB_USERNAME
+            DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
+            DEVOPS_GITHUB_TOKEN,CN/DEVOPS_GITHUB_TOKEN
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+
+      - name: Push Operator Image
+        run: make docker-push IMG="hazelcast/hazelcast-platform-operator:latest-snapshot"
+
+      - name: Generate API Reference Docs
+        run: |
+          make api-ref-doc > api-ref.adoc
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: hazelcast/hazelcast-platform-operator-docs
+          ref: main
+          token: ${{ env.DEVOPS_GITHUB_TOKEN }}
+          path: docs-repo
+
+      - name: Push API Reference to Docs repo
+        working-directory: docs-repo
+        run: |
+          git config user.email "devopshelm@hazelcast.com"
+          git config user.name "devOpsHelm"
+          
+          if cmp -s ../api-ref.adoc docs/modules/ROOT/pages/api-ref.adoc; then
+              echo "No need to update API Reference doc"
+              exit 0
+          fi
+          mv ../api-ref.adoc docs/modules/ROOT/pages/api-ref.adoc
+          git add docs/modules/ROOT/pages/api-ref.adoc
+          git commit -m "Update API reference doc" && git push origin main
+          
+  slack_notify:
+    name: Slack Notify
+    needs: [ 'publish-snapshot-image' ]
+    if: always() &&  needs.publish-snapshot-image.result != 'success' 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            SLACK_WEBHOOK_URL,CN/SLACK_WEBHOOK_URL
+
+      - uses: 8398a7/action-slack@v3
+        with:
+          fields: repo,commit,author,action,eventName,workflow
+          status: failure
+          channel: "#github-actions-log"
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
+

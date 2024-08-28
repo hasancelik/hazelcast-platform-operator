@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/hazelcast/platform-operator-agent/sidecar"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 	"golang.org/x/sync/errgroup"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

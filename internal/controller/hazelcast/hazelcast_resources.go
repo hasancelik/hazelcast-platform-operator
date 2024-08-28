@@ -19,10 +19,10 @@ import (
 	"github.com/go-logr/logr"
 	proto "github.com/hazelcast/hazelcast-go-client"
 	clientTypes "github.com/hazelcast/hazelcast-go-client/types"
-	"github.com/hazelcast/platform-operator-agent/init/compound"
-	downloadurl "github.com/hazelcast/platform-operator-agent/init/file_download_url"
-	downloadbucket "github.com/hazelcast/platform-operator-agent/init/jar_download_bucket"
-	"github.com/hazelcast/platform-operator-agent/init/restore"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/init/compound"
+	downloadurl "github.com/hazelcast/hazelcast-platform-operator/agent/init/file_download_url"
+	downloadbucket "github.com/hazelcast/hazelcast-platform-operator/agent/init/jar_download_bucket"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/init/restore"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -462,7 +462,7 @@ func wanPort(w hazelcastv1alpha1.WANConfig) corev1.ServicePort {
 		Protocol:    corev1.ProtocolTCP,
 		Port:        int32(w.Port),
 		TargetPort:  intstr.FromInt(int(w.Port)),
-		AppProtocol: pointer.String("tcp"),
+		AppProtocol: ptr.To("tcp"),
 	}
 }
 
@@ -841,14 +841,14 @@ func discoveryServicePorts(an *hazelcastv1alpha1.AdvancedNetwork) []corev1.Servi
 			Protocol:    corev1.ProtocolTCP,
 			Port:        n.MemberServerSocketPort,
 			TargetPort:  intstr.FromInt(n.MemberServerSocketPort),
-			AppProtocol: pointer.String("tcp"),
+			AppProtocol: ptr.To("tcp"),
 		},
 		{
 			Name:        n.RestPortName,
 			Protocol:    corev1.ProtocolTCP,
 			Port:        n.RestServerSocketPort,
 			TargetPort:  intstr.FromInt(n.RestServerSocketPort),
-			AppProtocol: pointer.String("tcp"),
+			AppProtocol: ptr.To("tcp"),
 		},
 	}
 
@@ -871,7 +871,7 @@ func clientPort() corev1.ServicePort {
 		Port:        n.DefaultHzPort,
 		Protocol:    corev1.ProtocolTCP,
 		TargetPort:  intstr.FromString(n.Hazelcast),
-		AppProtocol: pointer.String("tcp"),
+		AppProtocol: ptr.To("tcp"),
 	}
 }
 
@@ -879,7 +879,7 @@ func defaultWANPort() corev1.ServicePort {
 	return corev1.ServicePort{
 		Name:        n.WanDefaultPortName,
 		Protocol:    corev1.ProtocolTCP,
-		AppProtocol: pointer.String("tcp"),
+		AppProtocol: ptr.To("tcp"),
 		Port:        n.WanDefaultPort,
 		TargetPort:  intstr.FromInt(n.WanDefaultPort),
 	}
@@ -1248,6 +1248,7 @@ func decodePEM(data []byte, typ string) ([]byte, error) {
 }
 
 func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
+	var terminationGracePeriodSeconds int64 = 600
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metadata(h),
 		Spec: appsv1.StatefulSetSpec{
@@ -1296,7 +1297,7 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 						},
 						SecurityContext: containerSecurityContext(),
 					}},
-					TerminationGracePeriodSeconds: pointer.Int64(600),
+					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 				},
 			},
 		},
@@ -1381,7 +1382,7 @@ func persistentVolumeClaims(h *hazelcastv1alpha1.Hazelcast, pvcName string) []co
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: h.Spec.Persistence.PVC.AccessModes,
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: *h.Spec.Persistence.PVC.RequestStorage,
 					},
@@ -1400,7 +1401,7 @@ func persistentVolumeClaims(h *hazelcastv1alpha1.Hazelcast, pvcName string) []co
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: h.Spec.CPSubsystem.PVC.AccessModes,
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: *h.Spec.CPSubsystem.PVC.RequestStorage,
 					},
@@ -1423,7 +1424,7 @@ func localDevicePersistentVolumeClaim(h *hazelcastv1alpha1.Hazelcast) []corev1.P
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: localDeviceConfig.PVC.AccessModes,
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: *localDeviceConfig.PVC.RequestStorage,
 					},
@@ -1517,26 +1518,27 @@ func podSecurityContext() *corev1.PodSecurityContext {
 	// Openshift assigns user and fsgroup ids itself
 	if platform.GetType() == platform.OpenShift {
 		return &corev1.PodSecurityContext{
-			RunAsNonRoot: pointer.Bool(true),
+			RunAsNonRoot: ptr.To(true),
 		}
 	}
 
+	var u int64 = 65534
 	return &corev1.PodSecurityContext{
-		FSGroup:      pointer.Int64(65534),
-		RunAsNonRoot: pointer.Bool(true),
+		FSGroup:      &u,
+		RunAsNonRoot: ptr.To(true),
 		// Have to give userID otherwise Kubelet fails to create the pod
 		// saying userID must be numberic, Hazelcast image's default userID is "hazelcast"
 		// UBI images prohibits all numeric userIDs https://access.redhat.com/solutions/3103631
-		RunAsUser: pointer.Int64(65534),
+		RunAsUser: &u,
 	}
 }
 
 func containerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		RunAsNonRoot:             pointer.Bool(true),
-		Privileged:               pointer.Bool(false),
-		ReadOnlyRootFilesystem:   pointer.Bool(true),
-		AllowPrivilegeEscalation: pointer.Bool(false),
+		RunAsNonRoot:             ptr.To(true),
+		Privileged:               ptr.To(false),
+		ReadOnlyRootFilesystem:   ptr.To(true),
+		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
@@ -1640,13 +1642,14 @@ func ucdURLAgentVolumeMount() corev1.VolumeMount {
 }
 
 func volumes(h *hazelcastv1alpha1.Hazelcast) []corev1.Volume {
+	var defaultMode int32 = 420
 	vols := []corev1.Volume{
 		{
 			Name: n.HazelcastStorageName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName:  h.Name,
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: &defaultMode,
 				},
 			},
 		},
@@ -1657,7 +1660,7 @@ func volumes(h *hazelcastv1alpha1.Hazelcast) []corev1.Volume {
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: h.Name + n.InitSuffix,
 					},
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: &defaultMode,
 				},
 			},
 		},

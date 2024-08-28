@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/hazelcast/platform-operator-agent/sidecar"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 )
 
 type LocalBackupService struct {

@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Cache CR", func() {
@@ -79,7 +78,7 @@ var _ = Describe("Cache CR", func() {
 				cache := cacheOf(hazelcastv1alpha1.CacheSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(3),
+						BackupCount:           ptr.To(int32(3)),
 					},
 				})
 
@@ -88,7 +87,8 @@ var _ = Describe("Cache CR", func() {
 				var err error
 				for {
 					Expect(k8sClient.Get(context.Background(), lookupKey(cache), cache)).Should(Succeed())
-					cache.Spec.BackupCount = pointer.Int32(5)
+					var bc int32 = 5
+					cache.Spec.BackupCount = &bc
 
 					err = k8sClient.Update(context.Background(), cache)
 					if errors.IsConflict(err) {
@@ -129,7 +129,7 @@ var _ = Describe("Cache CR", func() {
 				Spec: hazelcastv1alpha1.CacheSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(2),
+						BackupCount:           ptr.To(int32(2)),
 						AsyncBackupCount:      2,
 					},
 				},
@@ -143,7 +143,7 @@ var _ = Describe("Cache CR", func() {
 				Spec: hazelcastv1alpha1.CacheSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(7),
+						BackupCount:           ptr.To(int32(7)),
 					},
 				},
 			}
@@ -169,7 +169,7 @@ var _ = Describe("Cache CR", func() {
 				Spec: hazelcastv1alpha1.CacheSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(5),
+						BackupCount:           ptr.To(int32(5)),
 						AsyncBackupCount:      5,
 					},
 				},

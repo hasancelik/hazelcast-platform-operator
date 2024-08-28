@@ -5,13 +5,12 @@ import (
 	"strconv"
 	. "time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
-
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Hazelcast ReplicatedMap Config", Group("replicatedmap"), func() {
@@ -59,7 +58,7 @@ var _ = Describe("Hazelcast ReplicatedMap Config", Group("replicatedmap"), func(
 			rms := hazelcastcomv1alpha1.ReplicatedMapSpec{
 				HazelcastResourceName: hzLookupKey.Name,
 				InMemoryFormat:        hazelcastcomv1alpha1.RMInMemoryFormatBinary,
-				AsyncFillup:           pointer.Bool(false),
+				AsyncFillup:           ptr.To(false),
 			}
 			rm := hazelcastconfig.ReplicatedMap(rms, rmLookupKey, labels)
 			Expect(k8sClient.Create(context.Background(), rm)).Should(Succeed())
@@ -67,7 +66,7 @@ var _ = Describe("Hazelcast ReplicatedMap Config", Group("replicatedmap"), func(
 
 			By("failing to update ReplicatedMap config")
 			rm.Spec.InMemoryFormat = hazelcastcomv1alpha1.RMInMemoryFormatObject
-			rm.Spec.AsyncFillup = pointer.Bool(true)
+			rm.Spec.AsyncFillup = ptr.To(true)
 			Expect(k8sClient.Update(context.Background(), rm)).
 				Should(MatchError(ContainSubstring("spec: Forbidden: cannot be updated")))
 		})

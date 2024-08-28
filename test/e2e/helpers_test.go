@@ -22,6 +22,7 @@ import (
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/util"
 	"github.com/hazelcast/hazelcast-platform-operator/test"
+	"k8s.io/utils/ptr"
 
 	hzClient "github.com/hazelcast/hazelcast-go-client"
 	"github.com/hazelcast/hazelcast-go-client/cluster"
@@ -43,7 +44,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -1159,7 +1159,7 @@ func createWanResources(ctx context.Context, hzMapResources map[string][]string,
 	for hzCrName := range hzMapResources {
 		hz := hazelcastconfig.Default(types.NamespacedName{Name: hzCrName, Namespace: ns}, labels)
 		hz.Spec.ClusterName = hzCrName
-		hz.Spec.ClusterSize = pointer.Int32(1)
+		hz.Spec.ClusterSize = ptr.To(int32(1))
 		hzCrs[hzCrName] = hz
 		CreateHazelcastCRWithoutCheck(hz)
 	}

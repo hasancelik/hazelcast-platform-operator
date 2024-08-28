@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
@@ -36,7 +36,7 @@ func Test_configBaseDirShouldNotChangeWhenExists(t *testing.T) {
 			Namespace: nn.Namespace,
 		},
 		Spec: hazelcastv1alpha1.HazelcastSpec{
-			ClusterSize: pointer.Int32(3),
+			ClusterSize: ptr.To(int32(3)),
 			Persistence: &hazelcastv1alpha1.HazelcastPersistenceConfiguration{
 				PVC: &hazelcastv1alpha1.PvcConfiguration{
 					AccessModes:    []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

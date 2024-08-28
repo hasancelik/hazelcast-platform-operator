@@ -4,6 +4,8 @@
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= latest-snapshot
+AGENT_IMAGE_TAG_BASE ?= hazelcast/platform-operator-agent
+AGENT_IMG ?= $(AGENT_IMAGE_TAG_BASE):$(VERSION)
 
 BUNDLE_VERSION := $(VERSION)
 VERSION_PARTS := $(subst ., ,$(VERSION))
@@ -23,10 +25,10 @@ ENVTEST_K8S_VERSION ?= 1.28.3
 # https://github.com/operator-framework/operator-sdk/releases
 OPERATOR_SDK_VERSION ?= v1.34.1
 # https://github.com/kubernetes-sigs/controller-tools/releases
-CONTROLLER_GEN_VERSION ?= v0.13.0
+CONTROLLER_GEN_VERSION ?= v0.14.0
 # https://github.com/kubernetes-sigs/controller-runtime/releases
 # It is set in the go.mod file
-CONTROLLER_RUNTIME_VERSION ?= v0.16.3
+CONTROLLER_RUNTIME_VERSION ?= v0.18.0
 # https://github.com/redhat-openshift-ecosystem/ocp-olm-catalog-validator/releases
 OCP_OLM_CATALOG_VALIDATOR_VERSION ?= v0.0.1
 # https://github.com/operator-framework/operator-registry/releases
@@ -85,7 +87,6 @@ endif
 ifeq (,$(WATCHED_NAMESPACES))
 override WATCHED_NAMESPACES := $(NAMESPACE)
 endif
-
 
 # Path to the kubectl command, if it is not in $PATH
 KUBECTL ?= kubectl
@@ -158,6 +159,10 @@ test: test-unit test-it
 test-unit: GO_BUILD_TAGS = "hazelcastinternal,unittest"
 test-unit: manifests generate
 	go test -tags $(GO_BUILD_TAGS) -v ./internal/... ./api/...
+
+.PHONY: agent-test
+agent-test:
+	go test -v ./agent/...
 
 lint: lint-go lint-yaml
 
@@ -306,6 +311,12 @@ docker-push: ## Push docker image with the manager.
 docker-push-latest:
 	docker tag ${IMG} ${IMAGE_TAG_BASE}:latest
 	docker push ${IMAGE_TAG_BASE}:latest
+
+agent-docker-build:
+	docker build -f agent/Dockerfile -t ${AGENT_IMG} .
+
+agent-docker-push:
+	docker push ${AGENT_IMG}
 
 sync-manifests: manifests yq
 # Move CRDs into helm template

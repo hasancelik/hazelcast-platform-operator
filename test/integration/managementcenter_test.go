@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
@@ -100,7 +100,7 @@ var _ = Describe("ManagementCenter CR", func() {
 			Expect(*fetchedCR.Spec.ExternalConnectivity).Should(Equal(expectedExternalConnectivity))
 
 			expectedPersistence := hazelcastv1alpha1.MCPersistenceConfiguration{
-				Enabled: pointer.Bool(true),
+				Enabled: ptr.To(true),
 				Size:    &[]resource.Quantity{resource.MustParse("10Gi")}[0],
 			}
 			Expect(*fetchedCR.Spec.Persistence).Should(Equal(expectedPersistence))
@@ -111,8 +111,8 @@ var _ = Describe("ManagementCenter CR", func() {
 				APIVersion:         "hazelcast.com/v1alpha1",
 				UID:                fetchedCR.UID,
 				Name:               fetchedCR.Name,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         ptr.To(true),
+				BlockOwnerDeletion: ptr.To(true),
 			}
 
 			fetchedService := EnsureServiceType(fetchedCR, corev1.ServiceTypeLoadBalancer)
@@ -126,7 +126,7 @@ var _ = Describe("ManagementCenter CR", func() {
 			expectedPVCSpec := corev1.PersistentVolumeClaimSpec{
 				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 				StorageClassName: nil,
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
@@ -208,8 +208,8 @@ var _ = Describe("ManagementCenter CR", func() {
 				APIVersion:         "hazelcast.com/v1alpha1",
 				UID:                fetchedMc.UID,
 				Name:               fetchedMc.Name,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         ptr.To(true),
+				BlockOwnerDeletion: ptr.To(true),
 			}
 
 			Update(fetchedMc)
@@ -337,7 +337,7 @@ var _ = Describe("ManagementCenter CR", func() {
 					Spec: hazelcastv1alpha1.ManagementCenterSpec{
 						LicenseKeySecretName: n.LicenseKeySecret,
 						Persistence: &hazelcastv1alpha1.MCPersistenceConfiguration{
-							Enabled:                 pointer.Bool(true),
+							Enabled:                 ptr.To(true),
 							ExistingVolumeClaimName: "ClaimName",
 						},
 					},

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestExternalConnectivityConfigurationType(t *testing.T) {
@@ -93,7 +93,7 @@ func TestPersistenceConfigurationIsEnabled(t *testing.T) {
 		{
 			name: "Enabled configuration",
 			conf: MCPersistenceConfiguration{
-				Enabled: pointer.Bool(true),
+				Enabled: ptr.To(true),
 			},
 			want: true,
 		},

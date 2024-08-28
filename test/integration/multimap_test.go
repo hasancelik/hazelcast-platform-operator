@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -66,7 +66,7 @@ var _ = Describe("MultiMap CR", func() {
 				Spec: hazelcastv1alpha1.MultiMapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(2),
+						BackupCount:           ptr.To(int32(2)),
 						AsyncBackupCount:      2,
 					},
 				},
@@ -80,7 +80,7 @@ var _ = Describe("MultiMap CR", func() {
 				Spec: hazelcastv1alpha1.MultiMapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(7),
+						BackupCount:           ptr.To(int32(7)),
 					},
 				},
 			}
@@ -106,7 +106,7 @@ var _ = Describe("MultiMap CR", func() {
 				Spec: hazelcastv1alpha1.MultiMapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(5),
+						BackupCount:           ptr.To(int32(5)),
 						AsyncBackupCount:      5,
 					},
 				},

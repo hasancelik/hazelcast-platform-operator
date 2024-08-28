@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 
@@ -208,7 +208,7 @@ var _ = Describe("Platform Resilience Tests", Label("resilience"), func() {
 			DiscoveryServiceType: corev1.ServiceTypeLoadBalancer,
 			MemberAccess:         hazelcastcomv1alpha1.MemberAccessLoadBalancer,
 		}
-		hazelcast.Spec.ClusterSize = pointer.Int32(6)
+		hazelcast.Spec.ClusterSize = ptr.To(int32(6))
 		hazelcast.Spec.CustomConfig.ConfigMapName = cm.Name
 		CreateHazelcastCR(hazelcast)
 
@@ -315,7 +315,7 @@ var _ = Describe("Platform Resilience Tests", Label("resilience"), func() {
 		hazelcast.Spec.NativeMemory = &hazelcastcomv1alpha1.NativeMemoryConfiguration{
 			Size: []resource.Quantity{resource.MustParse(nativeMemorySize)}[0],
 		}
-		hazelcast.Spec.ClusterSize = pointer.Int32(6)
+		hazelcast.Spec.ClusterSize = ptr.To(int32(6))
 
 		CreateHazelcastCR(hazelcast)
 		evaluateReadyMembers(hzLookupKey)

@@ -2,14 +2,14 @@ package managementcenter
 
 import (
 	"flag"
+
+	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	"github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 					Type: hazelcastcomv1alpha1.ExternalConnectivityTypeLoadBalancer,
 				},
 				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
-					Enabled:      pointer.Bool(true),
+					Enabled:      ptr.To(true),
 					Size:         &[]resource.Quantity{resource.MustParse("10Gi")}[0],
 					StorageClass: hazelcast.StorageClass,
 				},
@@ -62,7 +62,7 @@ var (
 					},
 				},
 				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
-					Enabled: pointer.Bool(false),
+					Enabled: ptr.To(false),
 				},
 			},
 		}
@@ -93,7 +93,7 @@ var (
 					},
 				},
 				Persistence: &hazelcastcomv1alpha1.MCPersistenceConfiguration{
-					Enabled: pointer.Bool(false),
+					Enabled: ptr.To(false),
 				},
 			},
 		}

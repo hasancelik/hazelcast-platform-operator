@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"errors"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -18,7 +18,7 @@ func NewDatastructValidator(o client.Object) datastructValidator {
 }
 
 func (v *datastructValidator) validateDataStructureSpec(ds *DataStructureSpec) {
-	if pointer.Int32Deref(ds.BackupCount, 0)+ds.AsyncBackupCount > 6 {
+	if ptr.Deref(ds.BackupCount, 0)+ds.AsyncBackupCount > 6 {
 		detail := "the sum of backupCount and asyncBackupCount can't be larger than than 6"
 		v.Invalid(Path("spec", "backupCount"), ds.BackupCount, detail)
 		v.Invalid(Path("spec", "asyncBackupCount"), ds.AsyncBackupCount, detail)

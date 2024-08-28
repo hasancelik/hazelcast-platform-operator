@@ -16,6 +16,9 @@ jobs:
           - category: image
             scan-type: image
             image-ref: docker.io/hazelcast/hazelcast-platform-operator:latest-snapshot
+          - category: agent_image
+            scan-type: image
+            image-ref: docker.io/hazelcast/platform-operator-agent:latest-snapshot
           - category: repo
             scan-type: repo
             image-ref: ''

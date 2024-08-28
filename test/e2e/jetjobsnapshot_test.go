@@ -6,14 +6,13 @@ import (
 	"strconv"
 	. "time"
 
+	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Hazelcast JetJobSnapshot", Group("jetjobsnapshot"), func() {
@@ -40,7 +39,7 @@ var _ = Describe("Hazelcast JetJobSnapshot", Group("jetjobsnapshot"), func() {
 			setLabelAndCRName("jjs-1")
 
 			hazelcast := hazelcastconfig.JetConfigured(hzLookupKey, labels)
-			hazelcast.Spec.ClusterSize = pointer.Int32(1)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCR(hazelcast)
 
 			By("creating Map CR")
@@ -154,7 +153,7 @@ var _ = Describe("Hazelcast JetJobSnapshot", Group("jetjobsnapshot"), func() {
 			setLabelAndCRName("jjs-2")
 
 			hazelcast := hazelcastconfig.JetConfigured(hzLookupKey, labels)
-			hazelcast.Spec.ClusterSize = pointer.Int32(1)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCR(hazelcast)
 
 			By("creating JetJob CR")
@@ -182,7 +181,7 @@ var _ = Describe("Hazelcast JetJobSnapshot", Group("jetjobsnapshot"), func() {
 			setLabelAndCRName("jjs-3")
 
 			hazelcast := hazelcastconfig.JetConfigured(hzLookupKey, labels)
-			hazelcast.Spec.ClusterSize = pointer.Int32(1)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(1))
 			CreateHazelcastCR(hazelcast)
 
 			By("creating JetJob CR which is in non-running status")

@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
@@ -229,7 +229,7 @@ func Test_hazelcastConfigMultipleCRs(t *testing.T) {
 	}
 	structureSpec := hazelcastv1alpha1.DataStructureSpec{
 		HazelcastResourceName: meta.Name,
-		BackupCount:           pointer.Int32(1),
+		BackupCount:           ptr.To(int32(1)),
 		AsyncBackupCount:      0,
 	}
 	structureStatus := hazelcastv1alpha1.DataStructureStatus{State: hazelcastv1alpha1.DataStructureSuccess}
@@ -303,7 +303,7 @@ func Test_hazelcastConfigMultipleCRs(t *testing.T) {
 					Name:      "cr",
 					Namespace: "default",
 				},
-				Spec:   hazelcastv1alpha1.ReplicatedMapSpec{HazelcastResourceName: meta.Name, AsyncFillup: pointer.Bool(true)},
+				Spec:   hazelcastv1alpha1.ReplicatedMapSpec{HazelcastResourceName: meta.Name, AsyncFillup: ptr.To(true)},
 				Status: hazelcastv1alpha1.ReplicatedMapStatus{DataStructureStatus: structureStatus},
 			},
 		},
@@ -321,7 +321,7 @@ func Test_hazelcastConfigMultipleCRs(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: hazelcastv1alpha1.QueueSpec{
-					EmptyQueueTtlSeconds: pointer.Int32(10),
+					EmptyQueueTtlSeconds: ptr.To(int32(10)),
 					MaxSize:              0,
 					DataStructureSpec:    structureSpec,
 				},

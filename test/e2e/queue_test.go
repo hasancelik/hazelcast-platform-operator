@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -60,9 +60,9 @@ var _ = Describe("Hazelcast Queue Config", Group("queue"), func() {
 			qs := hazelcastcomv1alpha1.QueueSpec{
 				DataStructureSpec: hazelcastcomv1alpha1.DataStructureSpec{
 					HazelcastResourceName: hzLookupKey.Name,
-					BackupCount:           pointer.Int32(3),
+					BackupCount:           ptr.To(int32(3)),
 				},
-				EmptyQueueTtlSeconds: pointer.Int32(10),
+				EmptyQueueTtlSeconds: ptr.To(int32(10)),
 				MaxSize:              100,
 			}
 			q := hazelcastconfig.Queue(qs, qLookupKey, labels)
@@ -70,8 +70,8 @@ var _ = Describe("Hazelcast Queue Config", Group("queue"), func() {
 			q = assertDataStructureStatus(qLookupKey, hazelcastcomv1alpha1.DataStructureSuccess, &hazelcastcomv1alpha1.Queue{}).(*hazelcastcomv1alpha1.Queue)
 
 			By("failing to update queue config")
-			q.Spec.BackupCount = pointer.Int32(5)
-			q.Spec.EmptyQueueTtlSeconds = pointer.Int32(20)
+			q.Spec.BackupCount = ptr.To(int32(5))
+			q.Spec.EmptyQueueTtlSeconds = ptr.To(int32(20))
 			Expect(k8sClient.Update(context.Background(), q)).
 				Should(MatchError(ContainSubstring("spec: Forbidden: cannot be updated")))
 		})

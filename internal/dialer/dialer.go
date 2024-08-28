@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hazelcast/platform-operator-agent/sidecar"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/rest"
 )
