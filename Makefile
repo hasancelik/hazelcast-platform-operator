@@ -14,7 +14,7 @@ ifeq (,$(PATCH_VERSION))
 BUNDLE_VERSION := $(BUNDLE_VERSION).0
 endif
 
-
+GO ?= go
 ### TOOL VERSIONS
 TOOLBIN = $(shell pwd)/bin
 # https://github.com/kubernetes/kubernetes/releases
@@ -35,7 +35,7 @@ OCP_OLM_CATALOG_VALIDATOR_VERSION ?= v0.0.1
 OPM_VERSION ?= v1.43.1
 # https://github.com/onsi/ginkgo/releases
 # It is set in the go.mod file
-GINKGO_VERSION ?= $(shell go list -m -f "{{.Version}}" github.com/onsi/ginkgo/v2)
+GINKGO_VERSION ?= $(shell $(GO) list -m -f "{{.Version}}" github.com/onsi/ginkgo/v2)
 # https://github.com/kubernetes-sigs/kustomize/releases
 KUSTOMIZE_VERSION ?= v5.2.1
 # https://github.com/helm/helm/releases
@@ -108,10 +108,10 @@ export DEPLOYMENT_NAME := $(RELEASE_NAME)-hazelcast-platform-operator
 STRING_SET_VALUES := developerModeEnabled=$(DEVELOPER_MODE_ENABLED),phoneHomeEnabled=$(PHONE_HOME_ENABLED),installCRDs=$(INSTALL_CRDS),image.imageOverride=$(IMG),watchedNamespaces='{$(WATCHED_NAMESPACES)}',debug.enabled=$(DEBUG_ENABLED),createClusterScopedResources=$(CREATE_CLUSTER_SCOPE_RESOURCES),webhook.enabled=$(WEBHOOK_ENABLED),enableHazelcastNodeDiscovery=$(ENABLED_HZ_NODE_DISCOVERY)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell $(GO) env GOBIN))
+GOBIN=$(shell $(GO) env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell $(GO) env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -147,10 +147,10 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	@$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 fmt: ## Run go fmt against code. Fail if changes were detected.
-	! go fmt ./... | grep .
+	! $(GO) fmt ./... | grep .
 
 vet: ## Run go vet against code.
-	go vet -tags "$(GO_BUILD_TAGS)" ./...
+	$(GO) vet -tags "$(GO_BUILD_TAGS)" ./...
 
 test-all: test test-e2e
 
@@ -158,7 +158,7 @@ test: test-unit test-it
 
 test-unit: GO_BUILD_TAGS = "hazelcastinternal,unittest"
 test-unit: manifests generate
-	go test -tags $(GO_BUILD_TAGS) -v ./internal/... ./api/...
+	$(GO) test -tags $(GO_BUILD_TAGS) -v ./internal/... ./api/...
 
 .PHONY: agent-test
 agent-test:
@@ -199,11 +199,11 @@ ENVTEST_ASSETS_DIR=$(TOOLBIN)/envtest
 
 test-it: manifests generate envtest ## Run tests.
 	mkdir -p ${ENVTEST_ASSETS_DIR}
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_ASSETS_DIR) -p path)" go test -tags $(GO_BUILD_TAGS) -v ./test/integration/... -eventually-timeout 30s -timeout 5m
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_ASSETS_DIR) -p path)" $(GO) test -tags $(GO_BUILD_TAGS) -v ./test/integration/... -eventually-timeout 30s -timeout 5m
 
 test-it-focus: manifests generate envtest ## Run tests.
 	mkdir -p ${ENVTEST_ASSETS_DIR}
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_ASSETS_DIR) -p path)" go test -tags $(GO_BUILD_TAGS) -v ./test/integration/... -eventually-timeout 30s -timeout 5m
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_ASSETS_DIR) -p path)" $(GO) test -tags $(GO_BUILD_TAGS) -v ./test/integration/... -eventually-timeout 30s -timeout 5m
 
 E2E_TEST_LABELS?=operator
 
@@ -270,16 +270,16 @@ test-e2e-focus: generate ginkgo ## Run focused end-to-end tests
 ##@ Build
 GO_BUILD_TAGS = hazelcastinternal
 build: manifests generate vet fmt ## Build manager binary.
-	go build -o bin/manager -tags "$(GO_BUILD_TAGS)" cmd/main.go
+	$(GO) build -o bin/manager -tags "$(GO_BUILD_TAGS)" cmd/main.go
 
 build-tilt: generate # This is not going to work if client and server cpu architectures are different
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "$(GO_BUILD_TAGS)" -ldflags "-s -w" -o bin/tilt/manager cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -tags "$(GO_BUILD_TAGS)" -ldflags "-s -w" -o bin/tilt/manager cmd/main.go
 
 build-tilt-debug: generate # This is not going to work if client and server cpu architectures are different
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "$(GO_BUILD_TAGS)" -gcflags "-N -l" -o bin/tilt/manager-debug cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -tags "$(GO_BUILD_TAGS)" -gcflags "-N -l" -o bin/tilt/manager-debug cmd/main.go
 
 run: manifests generate ## Run a controller from your host.
-	PHONE_HOME_ENABLED=$(PHONE_HOME_ENABLED) DEVELOPER_MODE_ENABLED=$(DEVELOPER_MODE_ENABLED) go run -tags "$(GO_BUILD_TAGS)" cmd/main.go
+	PHONE_HOME_ENABLED=$(PHONE_HOME_ENABLED) DEVELOPER_MODE_ENABLED=$(DEVELOPER_MODE_ENABLED) $(GO) run -tags "$(GO_BUILD_TAGS)" cmd/main.go
 
 docker-build: test docker-build-ci ## Build docker image with the manager.
 
@@ -379,7 +379,7 @@ clean-up-namespace: ## Clean up all the resources that were created by the opera
 
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize yq ## Generate bundle manifests and metadata, then validate generated files.
-	cd tools/olm-helm-role-sync && go run role-sync.go
+	cd tools/olm-helm-role-sync && $(GO) run role-sync.go
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	($(YQ) 'select(.kind == "ClusterRole")  | .' config/rbac/role.yaml && \
@@ -469,14 +469,14 @@ bundle-ocp-validate: ocp-olm-catalog-validator
 	 $(OCP_OLM_CATALOG_VALIDATOR) ./bundle  --optional-values="file=./bundle/metadata/annotations.yaml"
 
 api-ref-doc: 
-	@go build -o bin/docgen  ./apidocgen/main.go 
+	@$(GO) build -o bin/docgen  ./apidocgen/main.go
 	@./bin/docgen ./api/v1alpha1/*.go
 
 
 ##@ Tool installation
 
-OS=$(shell go env GOOS)
-ARCH=$(shell go env GOARCH)
+OS=$(shell $(GO) env GOOS)
+ARCH=$(shell $(GO) env GOARCH)
 
 .PHONY: print
 print:
@@ -518,8 +518,8 @@ ginkgo: ## Download ginkgo locally if necessary.
 	@$(eval GINKGO_MAJOR_VERSION=$(firstword $(subst ., ,$(GINKGO_VERSION)))) 
 	@[ -f $(GINKGO) ] || { \
 	mkdir -p $(dir $(GINKGO)) ;\
-	go get github.com/onsi/ginkgo/$(GINKGO_MAJOR_VERSION)@$(GINKGO_VERSION) ;\
-	GOBIN=$(dir $(GINKGO)) go install -mod=mod github.com/onsi/ginkgo/$(GINKGO_MAJOR_VERSION)/ginkgo@$(GINKGO_VERSION) ;\
+	$(GO) get github.com/onsi/ginkgo/$(GINKGO_MAJOR_VERSION)@$(GINKGO_VERSION) ;\
+	GOBIN=$(dir $(GINKGO)) $(GO) install -mod=mod github.com/onsi/ginkgo/$(GINKGO_MAJOR_VERSION)/ginkgo@$(GINKGO_VERSION) ;\
 	}
 	@if [ "$(PRINT_TOOL_NAME)" == "true" ]; then echo -n $(GINKGO); fi
 
@@ -572,9 +572,9 @@ define go-get-tool
 set -e ;\
 TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
-go mod init tmp &> /dev/null;\
+$(GO) mod init tmp &> /dev/null;\
 mkdir -p $(dir $(1)) ;\
-GOBIN=$(dir $(1)) CGO_ENABLED=0 go install $(2) &> /dev/null ;\
+GOBIN=$(dir $(1)) CGO_ENABLED=0 $(GO) install $(2) &> /dev/null ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
