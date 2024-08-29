@@ -57,23 +57,8 @@ Hazelcast Platform Operator supports the features below:
 * Support for exporting the snapshots of JetJob CRs using JetJobSnapshot CR
 * Support for custom configurations using ConfigMap
 
-For Hazelcast Platform Enterprise, you can request a trial license key from [here](https://trialrequest.hazelcast.com).
-
-## Contribute
-
-Before you contribute to the Hazelcast Platform Operator, please read the following:
-
-* [Contributing to Hazelcast Platform Operator](CONTRIBUTING.md)
-* [Developing and testing Hazelcast Platform Operator](DEVELOPER.md)
-* [Hazelcast Platform Operator Architecture](ARCHITECTURE_OVERVIEW.md)
-
-## License
-
-Please see the [LICENSE](LICENSE) file.
 
 # Hazelcast Platform Operator Agent #
-
-<img align="right" src="https://hazelcast.com/brand-assets/files/hazelcast-stacked-flat-sm.png">
 
 Platform Operator Agent enables users to utilize Hazelcast Platform's features easily in Kubernetes environments.
 The agent is implemented using [Go CDK](https://gocloud.dev/) for cloud providers support which allows the agent to become mostly cloud provider agnostic. Supported providers are: AWS, GCP and Azure.
@@ -109,7 +94,3 @@ Backup command starts an HTTP server for Backup related tasks. Learn more about 
 - `POST /upload/{id}/cancel`: Cancels the backup process.
 - `DELETE /upload/{id}`: Deletes the backup process status.
 - `GET /health`: Returns success if application is running.
-
-## License
-
-Please see the [LICENSE](../../hazelcast-platform-operator-agent/LICENSE) file.
