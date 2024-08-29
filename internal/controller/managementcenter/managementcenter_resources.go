@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -380,26 +380,27 @@ func podSecurityContext() *corev1.PodSecurityContext {
 	// Openshift assigns user and fsgroup ids itself
 	if platform.GetType() == platform.OpenShift {
 		return &corev1.PodSecurityContext{
-			RunAsNonRoot: pointer.Bool(true),
+			RunAsNonRoot: ptr.To(true),
 		}
 	}
 
+	var u int64 = 65534
 	return &corev1.PodSecurityContext{
-		RunAsNonRoot: pointer.Bool(true),
+		RunAsNonRoot: ptr.To(true),
 		// Do not have to give User and FSGroup IDs because MC image's default user is 1001 so kubelet
 		// does not complain when RunAsNonRoot is true
 		// To keep it consistent with Hazelcast, we are adding following
-		RunAsUser: pointer.Int64(65534),
-		FSGroup:   pointer.Int64(65534),
+		RunAsUser: &u,
+		FSGroup:   &u,
 	}
 }
 
 func containerSecurityContext() *corev1.SecurityContext {
 	sec := &corev1.SecurityContext{
-		RunAsNonRoot:             pointer.Bool(true),
-		Privileged:               pointer.Bool(false),
-		ReadOnlyRootFilesystem:   pointer.Bool(true),
-		AllowPrivilegeEscalation: pointer.Bool(false),
+		RunAsNonRoot:             ptr.To(true),
+		Privileged:               ptr.To(false),
+		ReadOnlyRootFilesystem:   ptr.To(true),
+		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
@@ -433,7 +434,7 @@ func persistentVolumeClaim(mc *hazelcastv1alpha1.ManagementCenter) corev1.Persis
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			StorageClassName: mc.Spec.Persistence.StorageClass,
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: *mc.Spec.Persistence.Size,
 				},
@@ -472,12 +473,13 @@ func tmpDir() corev1.Volume {
 }
 
 func configVolume(mc *hazelcastv1alpha1.ManagementCenter) corev1.Volume {
+	var defaultMode int32 = 420
 	return corev1.Volume{
 		Name: "config",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  mc.Name,
-				DefaultMode: pointer.Int32(420),
+				DefaultMode: &defaultMode,
 			},
 		},
 	}

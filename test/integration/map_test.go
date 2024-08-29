@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Map CR", func() {
@@ -85,7 +84,7 @@ var _ = Describe("Map CR", func() {
 				m := mapOf(hazelcastv1alpha1.MapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(3),
+						BackupCount:           ptr.To(int32(3)),
 					},
 				})
 
@@ -95,7 +94,7 @@ var _ = Describe("Map CR", func() {
 				for {
 					Expect(k8sClient.Get(
 						context.Background(), types.NamespacedName{Namespace: m.Namespace, Name: m.Name}, m)).Should(Succeed())
-					m.Spec.BackupCount = pointer.Int32(5)
+					m.Spec.BackupCount = ptr.To(int32(5))
 
 					err = k8sClient.Update(context.Background(), m)
 					if errors.IsConflict(err) {
@@ -116,7 +115,7 @@ var _ = Describe("Map CR", func() {
 				Spec: hazelcastv1alpha1.MapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(2),
+						BackupCount:           ptr.To(int32(2)),
 						AsyncBackupCount:      2,
 					},
 				},
@@ -130,7 +129,7 @@ var _ = Describe("Map CR", func() {
 				Spec: hazelcastv1alpha1.MapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(7),
+						BackupCount:           ptr.To(int32(7)),
 					},
 				},
 			}
@@ -151,12 +150,13 @@ var _ = Describe("Map CR", func() {
 		})
 
 		It("should error with sum of two values over 6", func() {
+
 			m := &hazelcastv1alpha1.Map{
 				ObjectMeta: randomObjectMeta(namespace),
 				Spec: hazelcastv1alpha1.MapSpec{
 					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 						HazelcastResourceName: "hazelcast",
-						BackupCount:           pointer.Int32(5),
+						BackupCount:           ptr.To(int32(5)),
 						AsyncBackupCount:      5,
 					},
 				},
@@ -210,7 +210,7 @@ var _ = Describe("Map CR", func() {
 					NearCache: &hazelcastv1alpha1.NearCache{
 						Name:               "mostly-used-map",
 						InMemoryFormat:     "OBJECT",
-						InvalidateOnChange: pointer.Bool(false),
+						InvalidateOnChange: ptr.To(false),
 						TimeToLiveSeconds:  300,
 						MaxIdleSeconds:     300,
 						NearCacheEviction: hazelcastv1alpha1.NearCacheEviction{
@@ -218,7 +218,7 @@ var _ = Describe("Map CR", func() {
 							MaxSizePolicy:  "ENTRY_COUNT",
 							Size:           10,
 						},
-						CacheLocalEntries: pointer.Bool(false),
+						CacheLocalEntries: ptr.To(false),
 					},
 				},
 			}
@@ -280,7 +280,7 @@ var _ = Describe("Map CR", func() {
 			m := mapOf(hazelcastv1alpha1.MapSpec{
 				DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
 					HazelcastResourceName: "hazelcast",
-					BackupCount:           pointer.Int32(3),
+					BackupCount:           ptr.To(int32(3)),
 				},
 				EventJournal: &hazelcastv1alpha1.EventJournal{
 					Capacity:          10000,

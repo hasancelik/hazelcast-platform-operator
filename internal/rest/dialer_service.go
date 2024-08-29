@@ -2,7 +2,7 @@ package rest
 
 import (
 	"context"
-	"github.com/hazelcast/platform-operator-agent/sidecar"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 	"net/http"
 	"net/url"
 )

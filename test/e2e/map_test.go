@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
@@ -76,7 +76,7 @@ var _ = Describe("Hazelcast Map - ", Group("map"), func() {
 			CreateHazelcastCR(hazelcast)
 
 			m := hazelcastconfig.DefaultMap(mapLookupKey, hazelcast.Name, labels)
-			m.Spec.BackupCount = pointer.Int32(3)
+			m.Spec.BackupCount = ptr.To(int32(3))
 			m.Spec.Indexes = []hazelcastcomv1alpha1.IndexConfig{
 				{
 					Name:               "index-1",
@@ -274,7 +274,7 @@ var _ = Describe("Hazelcast Map - ", Group("map"), func() {
 			mcfg := hzConfig.Hazelcast.Map[m.Name]
 
 			By("failing to update the map config")
-			m.Spec.BackupCount = pointer.Int32(4)
+			m.Spec.BackupCount = ptr.To(int32(4))
 			Expect(k8sClient.Update(context.Background(), m)).ShouldNot(Succeed())
 
 			By("checking if the same map config is still there")

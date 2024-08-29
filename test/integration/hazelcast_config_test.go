@@ -10,7 +10,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
@@ -122,7 +122,7 @@ var _ = Describe("Hazelcast Config Secret", func() {
 				Expect(k8sClient.Create(context.Background(), ccObj)).Should(Succeed())
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.DeprecatedUserCodeDeployment = &hazelcastv1alpha1.UserCodeDeploymentConfig{
-					ClientEnabled: pointer.Bool(false),
+					ClientEnabled: ptr.To(false),
 				}
 				hz := &hazelcastv1alpha1.Hazelcast{
 					ObjectMeta: randomObjectMeta(namespace),

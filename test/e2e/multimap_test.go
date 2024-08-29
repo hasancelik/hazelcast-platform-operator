@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -60,7 +60,7 @@ var _ = Describe("Hazelcast MultiMap Config", Group("multimap"), func() {
 			mms := hazelcastcomv1alpha1.MultiMapSpec{
 				DataStructureSpec: hazelcastcomv1alpha1.DataStructureSpec{
 					HazelcastResourceName: hzLookupKey.Name,
-					BackupCount:           pointer.Int32(3),
+					BackupCount:           ptr.To(int32(3)),
 				},
 				Binary:         true,
 				CollectionType: hazelcastcomv1alpha1.CollectionTypeList,
@@ -70,7 +70,7 @@ var _ = Describe("Hazelcast MultiMap Config", Group("multimap"), func() {
 			mm = assertDataStructureStatus(mmLookupKey, hazelcastcomv1alpha1.DataStructureSuccess, &hazelcastcomv1alpha1.MultiMap{}).(*hazelcastcomv1alpha1.MultiMap)
 
 			By("failing to update multiMap config")
-			mm.Spec.BackupCount = pointer.Int32(5)
+			mm.Spec.BackupCount = ptr.To(int32(5))
 			mm.Spec.Binary = false
 			Expect(k8sClient.Update(context.Background(), mm)).
 				Should(MatchError(ContainSubstring("spec: Forbidden: cannot be updated")))

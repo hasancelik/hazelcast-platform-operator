@@ -15,6 +15,7 @@ import (
 	"go/doc"
 	"go/parser"
 	"go/token"
+	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -140,7 +141,7 @@ func parseStringTypeDocumentation(srcs []string) []StringType {
 
 func astFrom(filePaths []string) *doc.Package {
 	fset := token.NewFileSet()
-	m := make(map[string]*ast.File)
+	var files []*ast.File
 
 	for _, filePath := range filePaths {
 		f, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
@@ -148,11 +149,15 @@ func astFrom(filePaths []string) *doc.Package {
 			fmt.Println(err)
 			return nil
 		}
-		m[filePath] = f
+		files = append(files, f)
 	}
-	apkg, _ := ast.NewPackage(fset, m, nil, nil)
 
-	return doc.New(apkg, "", 0)
+	d, err := doc.NewFromFiles(fset, files, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return d
 }
 
 func fmtRawDoc(rawDoc string) string {

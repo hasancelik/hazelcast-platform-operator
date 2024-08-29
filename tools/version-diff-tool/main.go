@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"golang.org/x/mod/semver"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+
+	"golang.org/x/mod/semver"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/tufin/oasdiff/checker"

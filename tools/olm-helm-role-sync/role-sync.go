@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	sprig "github.com/go-task/slim-sprig"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"strings"
 	"text/template"
+
+	sprig "github.com/go-task/slim-sprig"
+	"gopkg.in/yaml.v3"
 )
 
 type Rule struct {

@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
@@ -142,7 +142,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 			Enabled: true,
 			Join: Join{
 				Kubernetes: Kubernetes{
-					Enabled:                 pointer.Bool(true),
+					Enabled:                 ptr.To(true),
 					ServiceName:             h.Name,
 					ServicePort:             n.MemberServerSocketPort,
 					ServicePerPodLabelName:  n.ServicePerPodLabelName,
@@ -161,7 +161,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 	if h.Spec.JetEngineConfiguration.IsConfigured() {
 		cfg.Jet = Jet{
 			Enabled:               h.Spec.JetEngineConfiguration.Enabled,
-			ResourceUploadEnabled: pointer.Bool(h.Spec.JetEngineConfiguration.ResourceUploadEnabled),
+			ResourceUploadEnabled: ptr.To(h.Spec.JetEngineConfiguration.ResourceUploadEnabled),
 		}
 
 		if h.Spec.JetEngineConfiguration.Instance.IsConfigured() {
@@ -187,7 +187,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 	}
 
 	if h.Spec.ExposeExternally.UsesNodeName() {
-		cfg.AdvancedNetwork.Join.Kubernetes.UseNodeNameAsExternalAddress = pointer.Bool(true)
+		cfg.AdvancedNetwork.Join.Kubernetes.UseNodeNameAsExternalAddress = ptr.To(true)
 	}
 
 	if h.Spec.ClusterName != "" {
@@ -196,13 +196,13 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 
 	if h.Spec.Persistence.IsEnabled() {
 		cfg.Persistence = Persistence{
-			Enabled:                   pointer.Bool(true),
+			Enabled:                   ptr.To(true),
 			BaseDir:                   n.BaseDir,
 			BackupDir:                 path.Join(n.BaseDir, "hot-backup"),
 			Parallelism:               1,
 			ValidationTimeoutSec:      120,
 			ClusterDataRecoveryPolicy: clusterDataRecoveryPolicy(h.Spec.Persistence.ClusterDataRecoveryPolicy),
-			AutoRemoveStaleData:       pointer.Bool(true),
+			AutoRemoveStaleData:       ptr.To(true),
 		}
 		if h.Spec.Persistence.DataRecoveryTimeout != 0 {
 			cfg.Persistence.ValidationTimeoutSec = h.Spec.Persistence.DataRecoveryTimeout
@@ -213,12 +213,12 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 		switch h.Spec.HighAvailabilityMode {
 		case hazelcastv1alpha1.HighAvailabilityNodeMode:
 			cfg.PartitionGroup = PartitionGroup{
-				Enabled:   pointer.Bool(true),
+				Enabled:   ptr.To(true),
 				GroupType: "NODE_AWARE",
 			}
 		case hazelcastv1alpha1.HighAvailabilityZoneMode:
 			cfg.PartitionGroup = PartitionGroup{
-				Enabled:   pointer.Bool(true),
+				Enabled:   ptr.To(true),
 				GroupType: "ZONE_AWARE",
 			}
 		}
@@ -274,9 +274,9 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 		Port:      n.RestServerSocketPort,
 		PortCount: 1,
 	}
-	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.Persistence.Enabled = pointer.Bool(true)
-	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.HealthCheck.Enabled = pointer.Bool(true)
-	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.ClusterWrite.Enabled = pointer.Bool(true)
+	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.Persistence.Enabled = ptr.To(true)
+	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.HealthCheck.Enabled = ptr.To(true)
+	cfg.AdvancedNetwork.RestServerSocketEndpointConfig.EndpointGroups.ClusterWrite.Enabled = ptr.To(true)
 
 	// WAN Network
 	if h.Spec.AdvancedNetwork != nil && len(h.Spec.AdvancedNetwork.WAN) > 0 {
@@ -314,13 +314,13 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 		)
 		// require MTLS for member-member communication
 		cfg.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL = SSL{
-			Enabled:          pointer.Bool(true),
+			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
 			Properties:       NewSSLProperties(jksPath, password, "TLS", hazelcastv1alpha1.MutualAuthenticationRequired),
 		}
 		// for client-server configuration use only server TLS
 		cfg.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL = SSL{
-			Enabled:          pointer.Bool(true),
+			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
 			Properties:       NewSSLProperties(jksPath, password, "TLS", h.Spec.TLS.MutualAuthentication),
 		}
@@ -756,7 +756,7 @@ func fillHazelcastConfigWithUserCodeNamespaces(cfg *Hazelcast, h *hazelcastv1alp
 		return
 	}
 	cfg.UserCodeNamespaces = UserCodeNamespaces{
-		Enabled:    pointer.Bool(true),
+		Enabled:    ptr.To(true),
 		Namespaces: make(map[string][]UserCodeNamespaceResource, len(ucn)),
 	}
 	if h.Spec.UserCodeNamespaces.ClassFilter != nil {

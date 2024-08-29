@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -212,7 +212,7 @@ func defaultCRsMap() (types.NamespacedName, *hazelcastv1alpha1.Hazelcast, *hazel
 		},
 		Spec: hazelcastv1alpha1.MapSpec{
 			DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
-				BackupCount:           pointer.Int32(2),
+				BackupCount:           ptr.To(int32(2)),
 				HazelcastResourceName: nn.Name,
 			},
 		},

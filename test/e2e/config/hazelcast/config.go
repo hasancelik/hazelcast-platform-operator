@@ -3,14 +3,13 @@ package hazelcast
 import (
 	"flag"
 
+	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -150,7 +149,7 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(clusterSize),
+				ClusterSize:          ptr.To(clusterSize),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
@@ -169,7 +168,7 @@ var (
 
 	CPSubsystem = func(clusterSize int32) hazelcastcomv1alpha1.HazelcastSpec {
 		return hazelcastcomv1alpha1.HazelcastSpec{
-			ClusterSize:          pointer.Int32(clusterSize),
+			ClusterSize:          ptr.To(clusterSize),
 			Repository:           *hazelcastEERepo,
 			LicenseKeySecretName: naming.LicenseKeySecret,
 			Version:              naming.HazelcastVersion,
@@ -186,7 +185,7 @@ var (
 
 	CPSubsystemPersistence = func(clusterSize int32) hazelcastcomv1alpha1.HazelcastSpec {
 		return hazelcastcomv1alpha1.HazelcastSpec{
-			ClusterSize:          pointer.Int32(clusterSize),
+			ClusterSize:          ptr.To(clusterSize),
 			Version:              naming.HazelcastVersion,
 			Repository:           *hazelcastEERepo,
 			LicenseKeySecretName: naming.LicenseKeySecret,
@@ -246,13 +245,14 @@ var (
 				Namespace: lk.Namespace,
 				Labels:    lbls,
 			},
+
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(1),
+				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
 				JetEngineConfiguration: &hazelcastcomv1alpha1.JetEngineConfiguration{
-					Enabled:               pointer.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: true,
 				},
 			},
@@ -267,12 +267,12 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(1),
+				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
 				JetEngineConfiguration: &hazelcastcomv1alpha1.JetEngineConfiguration{
-					Enabled:               pointer.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: true,
 					RemoteFileConfiguration: hazelcastcomv1alpha1.RemoteFileConfiguration{
 						BucketConfiguration: &hazelcastcomv1alpha1.BucketConfiguration{
@@ -293,12 +293,12 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(1),
+				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
 				JetEngineConfiguration: &hazelcastcomv1alpha1.JetEngineConfiguration{
-					Enabled:               pointer.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: true,
 					RemoteFileConfiguration: hazelcastcomv1alpha1.RemoteFileConfiguration{
 						RemoteURLs: []string{url},
@@ -316,12 +316,12 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(1),
+				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
 				JetEngineConfiguration: &hazelcastcomv1alpha1.JetEngineConfiguration{
-					Enabled:               pointer.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: true,
 					RemoteFileConfiguration: hazelcastcomv1alpha1.RemoteFileConfiguration{
 						BucketConfiguration: &hazelcastcomv1alpha1.BucketConfiguration{
@@ -331,8 +331,8 @@ var (
 					},
 					Instance: &hazelcastcomv1alpha1.JetInstance{
 						LosslessRestartEnabled:         true,
-						CooperativeThreadCount:         pointer.Int32(1),
-						MaxProcessorAccumulatedRecords: pointer.Int64(1000000000),
+						CooperativeThreadCount:         ptr.To(int32(1)),
+						MaxProcessorAccumulatedRecords: ptr.To(int64(1000000000)),
 					},
 				},
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
@@ -355,17 +355,17 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(1),
+				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
 				JetEngineConfiguration: &hazelcastcomv1alpha1.JetEngineConfiguration{
-					Enabled:               pointer.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: true,
 					Instance: &hazelcastcomv1alpha1.JetInstance{
 						LosslessRestartEnabled:         true,
-						CooperativeThreadCount:         pointer.Int32(1),
-						MaxProcessorAccumulatedRecords: pointer.Int64(1000000000),
+						CooperativeThreadCount:         ptr.To(int32(1)),
+						MaxProcessorAccumulatedRecords: ptr.To(int64(1000000000)),
 					},
 				},
 				Persistence: &hazelcastcomv1alpha1.HazelcastPersistenceConfiguration{
@@ -493,7 +493,7 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(clusterSize),
+				ClusterSize:          ptr.To(clusterSize),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,
@@ -601,7 +601,7 @@ var (
 			Spec: hazelcastcomv1alpha1.MapSpec{
 				DataStructureSpec: hazelcastcomv1alpha1.DataStructureSpec{
 					HazelcastResourceName: hzName,
-					BackupCount:           pointer.Int32(0),
+					BackupCount:           ptr.To(int32(0)),
 				},
 				PersistenceEnabled: true,
 			},
@@ -929,7 +929,7 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
-				ClusterSize:          pointer.Int32(3),
+				ClusterSize:          ptr.To(int32(3)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
 				LicenseKeySecretName: naming.LicenseKeySecret,

@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/hazelcast/platform-operator-agent/sidecar"
+	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/rest"

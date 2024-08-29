@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Platform Rolling UpgradeTests", Label("rolling_upgrade"), func() {
@@ -96,7 +96,7 @@ var _ = Describe("Platform Rolling UpgradeTests", Label("rolling_upgrade"), func
 
 		By("pause Hazelcast")
 		UpdateHazelcastCR(hazelcast, func(hazelcast *hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast {
-			hazelcast.Spec.ClusterSize = pointer.Int32(0)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(0))
 			return hazelcast
 		})
 		WaitForReplicaSize(hazelcast.Namespace, hazelcast.Name, 0)
@@ -109,7 +109,7 @@ var _ = Describe("Platform Rolling UpgradeTests", Label("rolling_upgrade"), func
 
 		By("resume Hazelcast")
 		UpdateHazelcastCR(hazelcast, func(hazelcast *hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast {
-			hazelcast.Spec.ClusterSize = pointer.Int32(3)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(3))
 			hazelcast.Spec.Version = "5.4.0"
 			return hazelcast
 		})

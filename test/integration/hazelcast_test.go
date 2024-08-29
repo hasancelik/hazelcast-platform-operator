@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/smithy-go/ptr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
@@ -19,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/hazelcast"
@@ -196,8 +195,8 @@ var _ = Describe("Hazelcast CR", func() {
 				APIVersion:         "hazelcast.com/v1alpha1",
 				UID:                fetchedCR.UID,
 				Name:               fetchedCR.Name,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         ptr.To(true),
+				BlockOwnerDeletion: ptr.To(true),
 			}
 
 			fetchedClusterRole := &rbacv1.ClusterRole{}
@@ -815,7 +814,7 @@ var _ = Describe("Hazelcast CR", func() {
 				}, Equal(
 					corev1.PersistentVolumeClaimSpec{
 						AccessModes: fetchedCR.Spec.Persistence.PVC.AccessModes,
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: *fetchedCR.Spec.Persistence.PVC.RequestStorage,
 							},
@@ -915,7 +914,7 @@ var _ = Describe("Hazelcast CR", func() {
 		When("Memory is configured", func() {
 			It("should set memory with percentages", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
-				p := pointer.String("10")
+				p := ptr.To("10")
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					Memory: &hazelcastv1alpha1.JVMMemoryConfiguration{
 						InitialRAMPercentage: p,
@@ -941,7 +940,7 @@ var _ = Describe("Hazelcast CR", func() {
 				s := hazelcastv1alpha1.GCTypeSerial
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					GC: &hazelcastv1alpha1.JVMGCConfiguration{
-						Logging:   pointer.Bool(true),
+						Logging:   ptr.To(true),
 						Collector: &s,
 					},
 				}
@@ -965,7 +964,7 @@ var _ = Describe("Hazelcast CR", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					Memory: &hazelcastv1alpha1.JVMMemoryConfiguration{
-						InitialRAMPercentage: pointer.String("10"),
+						InitialRAMPercentage: ptr.To("10"),
 					},
 					Args: []string{fmt.Sprintf("%s=10", hazelcastv1alpha1.InitialRamPerArg)},
 				}
@@ -983,7 +982,7 @@ var _ = Describe("Hazelcast CR", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					Memory: &hazelcastv1alpha1.JVMMemoryConfiguration{
-						MinRAMPercentage: pointer.String("10"),
+						MinRAMPercentage: ptr.To("10"),
 					},
 					Args: []string{fmt.Sprintf("%s=10", hazelcastv1alpha1.MinRamPerArg)},
 				}
@@ -1001,7 +1000,7 @@ var _ = Describe("Hazelcast CR", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					Memory: &hazelcastv1alpha1.JVMMemoryConfiguration{
-						MaxRAMPercentage: pointer.String("10"),
+						MaxRAMPercentage: ptr.To("10"),
 					},
 					Args: []string{fmt.Sprintf("%s=10", hazelcastv1alpha1.MaxRamPerArg)},
 				}
@@ -1019,7 +1018,7 @@ var _ = Describe("Hazelcast CR", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JVM = &hazelcastv1alpha1.JVMConfiguration{
 					GC: &hazelcastv1alpha1.JVMGCConfiguration{
-						Logging: pointer.Bool(true),
+						Logging: ptr.To(true),
 					},
 					Args: []string{fmt.Sprintf(hazelcastv1alpha1.GCLoggingArg)},
 				}
@@ -1313,7 +1312,7 @@ var _ = Describe("Hazelcast CR", func() {
 
 	Context("StatefulSet", func() {
 		firstSpec := hazelcastv1alpha1.HazelcastSpec{
-			ClusterSize:          pointer.Int32(2),
+			ClusterSize:          ptr.To(int32(2)),
 			Repository:           "hazelcast/hazelcast-enterprise",
 			Version:              "5.2",
 			ImagePullPolicy:      corev1.PullAlways,
@@ -1323,7 +1322,7 @@ var _ = Describe("Hazelcast CR", func() {
 		}
 
 		secondSpec := hazelcastv1alpha1.HazelcastSpec{
-			ClusterSize:     pointer.Int32(3),
+			ClusterSize:     ptr.To(int32(3)),
 			Repository:      "hazelcast/hazelcast",
 			Version:         "5.3",
 			ImagePullPolicy: corev1.PullIfNotPresent,
@@ -1457,7 +1456,7 @@ var _ = Describe("Hazelcast CR", func() {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: cm,
 								},
-								DefaultMode: pointer.Int32(420),
+								DefaultMode: ptr.To(int32(420)),
 							},
 						},
 					})
@@ -1560,7 +1559,7 @@ var _ = Describe("Hazelcast CR", func() {
 					Enabled: true,
 					Join: config.Join{
 						Kubernetes: config.Kubernetes{
-							Enabled:                      pointer.Bool(true),
+							Enabled:                      ptr.To(true),
 							ServiceName:                  hz.Name,
 							UseNodeNameAsExternalAddress: nil,
 							ServicePerPodLabelName:       "hazelcast.com/service-per-pod",
@@ -1594,9 +1593,9 @@ var _ = Describe("Hazelcast CR", func() {
 							PortCount: 1,
 						},
 						EndpointGroups: config.EndpointGroups{
-							HealthCheck:  config.EndpointGroup{Enabled: pointer.Bool(true)},
-							ClusterWrite: config.EndpointGroup{Enabled: pointer.Bool(true)},
-							Persistence:  config.EndpointGroup{Enabled: pointer.Bool(true)},
+							HealthCheck:  config.EndpointGroup{Enabled: ptr.To(true)},
+							ClusterWrite: config.EndpointGroup{Enabled: ptr.To(true)},
+							Persistence:  config.EndpointGroup{Enabled: ptr.To(true)},
 						},
 					},
 					WanServerSocketEndpointConfig: map[string]config.WanPort{
@@ -1728,7 +1727,7 @@ var _ = Describe("Hazelcast CR", func() {
 					Enabled: true,
 					Join: config.Join{
 						Kubernetes: config.Kubernetes{
-							Enabled:                      pointer.Bool(true),
+							Enabled:                      ptr.To(true),
 							ServiceName:                  hz.Name,
 							UseNodeNameAsExternalAddress: nil,
 							ServicePerPodLabelName:       "hazelcast.com/service-per-pod",
@@ -1754,9 +1753,9 @@ var _ = Describe("Hazelcast CR", func() {
 							PortCount: 1,
 						},
 						EndpointGroups: config.EndpointGroups{
-							HealthCheck:  config.EndpointGroup{Enabled: pointer.Bool(true)},
-							ClusterWrite: config.EndpointGroup{Enabled: pointer.Bool(true)},
-							Persistence:  config.EndpointGroup{Enabled: pointer.Bool(true)},
+							HealthCheck:  config.EndpointGroup{Enabled: ptr.To(true)},
+							ClusterWrite: config.EndpointGroup{Enabled: ptr.To(true)},
+							Persistence:  config.EndpointGroup{Enabled: ptr.To(true)},
 						},
 					},
 					WanServerSocketEndpointConfig: map[string]config.WanPort{
@@ -2198,7 +2197,7 @@ var _ = Describe("Hazelcast CR", func() {
 				DiscoveryServiceType: "InvalidServiceType",
 				MemberAccess:         hazelcastv1alpha1.MemberAccessLoadBalancer,
 			}
-			spec.ClusterSize = pointer.Int32(5000)
+			spec.ClusterSize = ptr.To(int32(5000))
 			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
 				WAN: []hazelcastv1alpha1.WANConfig{
 					{
@@ -2258,20 +2257,20 @@ var _ = Describe("Hazelcast CR", func() {
 			It("should create jet engine configuration", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JetEngineConfiguration = &hazelcastv1alpha1.JetEngineConfiguration{
-					Enabled:               ptr.Bool(true),
+					Enabled:               ptr.To(true),
 					ResourceUploadEnabled: false,
 					Instance: &hazelcastv1alpha1.JetInstance{
-						CooperativeThreadCount:         ptr.Int32(1),
+						CooperativeThreadCount:         ptr.To(int32(1)),
 						FlowControlPeriodMillis:        1,
 						BackupCount:                    1,
 						ScaleUpDelayMillis:             1,
 						LosslessRestartEnabled:         false,
-						MaxProcessorAccumulatedRecords: ptr.Int64(1),
+						MaxProcessorAccumulatedRecords: ptr.To(int64(1)),
 					},
 					EdgeDefaults: &hazelcastv1alpha1.JetEdgeDefaults{
-						QueueSize:               ptr.Int32(1),
-						PacketSizeLimit:         ptr.Int32(1),
-						ReceiveWindowMultiplier: ptr.Int8(1),
+						QueueSize:               ptr.To(int32(1)),
+						PacketSizeLimit:         ptr.To(int32(1)),
+						ReceiveWindowMultiplier: ptr.To(int8(1)),
 					},
 				}
 				hz := &hazelcastv1alpha1.Hazelcast{
@@ -2280,20 +2279,20 @@ var _ = Describe("Hazelcast CR", func() {
 				}
 
 				expectedJetEngineConfig := config.Jet{
-					Enabled:               ptr.Bool(true),
-					ResourceUploadEnabled: ptr.Bool(false),
+					Enabled:               ptr.To(true),
+					ResourceUploadEnabled: ptr.To(false),
 					Instance: config.JetInstance{
-						CooperativeThreadCount:         ptr.Int32(1),
-						FlowControlPeriodMillis:        ptr.Int32(1),
-						BackupCount:                    ptr.Int32(1),
-						ScaleUpDelayMillis:             ptr.Int32(1),
-						LosslessRestartEnabled:         ptr.Bool(false),
-						MaxProcessorAccumulatedRecords: ptr.Int64(1),
+						CooperativeThreadCount:         ptr.To(int32(1)),
+						FlowControlPeriodMillis:        ptr.To(int32(1)),
+						BackupCount:                    ptr.To(int32(1)),
+						ScaleUpDelayMillis:             ptr.To(int32(1)),
+						LosslessRestartEnabled:         ptr.To(false),
+						MaxProcessorAccumulatedRecords: ptr.To(int64(1)),
 					},
 					EdgeDefaults: config.EdgeDefaults{
-						QueueSize:               ptr.Int32(1),
-						PacketSizeLimit:         ptr.Int32(1),
-						ReceiveWindowMultiplier: ptr.Int8(1),
+						QueueSize:               ptr.To(int32(1)),
+						PacketSizeLimit:         ptr.To(int32(1)),
+						ReceiveWindowMultiplier: ptr.To(int8(1)),
 					},
 				}
 
@@ -2340,7 +2339,7 @@ var _ = Describe("Hazelcast CR", func() {
 		It("should validate backup count", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.JetEngineConfiguration = &hazelcastv1alpha1.JetEngineConfiguration{
-				Enabled: pointer.Bool(true),
+				Enabled: ptr.To(true),
 				Instance: &hazelcastv1alpha1.JetInstance{
 					BackupCount: 7,
 				},
@@ -2358,7 +2357,7 @@ var _ = Describe("Hazelcast CR", func() {
 			It("should fail if persistence is not enabled", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JetEngineConfiguration = &hazelcastv1alpha1.JetEngineConfiguration{
-					Enabled: pointer.Bool(true),
+					Enabled: ptr.To(true),
 					Instance: &hazelcastv1alpha1.JetInstance{
 						LosslessRestartEnabled: true,
 					},
@@ -2383,7 +2382,7 @@ var _ = Describe("Hazelcast CR", func() {
 					},
 				}
 				spec.JetEngineConfiguration = &hazelcastv1alpha1.JetEngineConfiguration{
-					Enabled: ptr.Bool(true),
+					Enabled: ptr.To(true),
 					Instance: &hazelcastv1alpha1.JetInstance{
 						LosslessRestartEnabled: true,
 					},
@@ -2404,7 +2403,7 @@ var _ = Describe("Hazelcast CR", func() {
 			It("should error when secret doesn't exist with the given bucket secretName", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.JetEngineConfiguration = &hazelcastv1alpha1.JetEngineConfiguration{
-					Enabled: ptr.Bool(true),
+					Enabled: ptr.To(true),
 					RemoteFileConfiguration: hazelcastv1alpha1.RemoteFileConfiguration{
 						BucketConfiguration: &hazelcastv1alpha1.BucketConfiguration{
 							BucketURI:  "gs://my-bucket",
@@ -2433,7 +2432,7 @@ var _ = Describe("Hazelcast CR", func() {
 					Spec: hazelcastv1alpha1.HazelcastSpec{
 						LicenseKeySecretName: n.LicenseKeySecret,
 						JetEngineConfiguration: &hazelcastv1alpha1.JetEngineConfiguration{
-							Enabled:               pointer.Bool(true),
+							Enabled:               ptr.To(true),
 							ResourceUploadEnabled: true,
 							RemoteFileConfiguration: hazelcastv1alpha1.RemoteFileConfiguration{
 								ConfigMaps: cms,
@@ -2456,7 +2455,7 @@ var _ = Describe("Hazelcast CR", func() {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: cm,
 								},
-								DefaultMode: pointer.Int32(420),
+								DefaultMode: ptr.To(int32(420)),
 							},
 						},
 					})
@@ -2665,9 +2664,9 @@ var _ = Describe("Hazelcast CR", func() {
 				By("checking the Local Device configuration", func() {
 					localDevice := fetchedCR.Spec.LocalDevices[0]
 					Expect(localDevice.Name).Should(Equal("local-device-test"))
-					Expect(localDevice.BlockSize).Should(Equal(pointer.Int32(4096)))
-					Expect(localDevice.ReadIOThreadCount).Should(Equal(pointer.Int32(4)))
-					Expect(localDevice.WriteIOThreadCount).Should(Equal(pointer.Int32(4)))
+					Expect(localDevice.BlockSize).Should(Equal(ptr.To(int32(4096))))
+					Expect(localDevice.ReadIOThreadCount).Should(Equal(ptr.To(int32(4))))
+					Expect(localDevice.WriteIOThreadCount).Should(Equal(ptr.To(int32(4))))
 					Expect(localDevice.PVC.AccessModes).Should(ConsistOf(corev1.ReadWriteOnce))
 					Expect(*localDevice.PVC.RequestStorage).Should(Equal(resource.MustParse("8Gi")))
 				})
@@ -2678,9 +2677,9 @@ var _ = Describe("Hazelcast CR", func() {
 						Value: 8589934592,
 						Unit:  "BYTES",
 					},
-					BlockSize:          pointer.Int32(4096),
-					ReadIOThreadCount:  pointer.Int32(4),
-					WriteIOThreadCount: pointer.Int32(4),
+					BlockSize:          ptr.To(int32(4096)),
+					ReadIOThreadCount:  ptr.To(int32(4)),
+					WriteIOThreadCount: ptr.To(int32(4)),
 				}
 
 				Eventually(func() config.LocalDevice {
@@ -2698,9 +2697,9 @@ var _ = Describe("Hazelcast CR", func() {
 			It("should create volumeClaimTemplates", Label("fast"), func() {
 				spec.LocalDevices = []hazelcastv1alpha1.LocalDeviceConfig{{
 					Name:               "local-device-test",
-					BlockSize:          pointer.Int32(2048),
-					ReadIOThreadCount:  pointer.Int32(2),
-					WriteIOThreadCount: pointer.Int32(2),
+					BlockSize:          ptr.To(int32(2048)),
+					ReadIOThreadCount:  ptr.To(int32(2)),
+					WriteIOThreadCount: ptr.To(int32(2)),
 					PVC: &hazelcastv1alpha1.PvcConfiguration{
 						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 						RequestStorage:   &[]resource.Quantity{resource.MustParse("128G")}[0],
@@ -2719,9 +2718,9 @@ var _ = Describe("Hazelcast CR", func() {
 				By("checking the Local Device configuration", func() {
 					localDevice := fetchedCR.Spec.LocalDevices[0]
 					Expect(localDevice.Name).Should(Equal("local-device-test"))
-					Expect(localDevice.BlockSize).Should(Equal(pointer.Int32(2048)))
-					Expect(localDevice.ReadIOThreadCount).Should(Equal(pointer.Int32(2)))
-					Expect(localDevice.WriteIOThreadCount).Should(Equal(pointer.Int32(2)))
+					Expect(localDevice.BlockSize).Should(Equal(ptr.To(int32(2048))))
+					Expect(localDevice.ReadIOThreadCount).Should(Equal(ptr.To(int32(2))))
+					Expect(localDevice.WriteIOThreadCount).Should(Equal(ptr.To(int32(2))))
 					Expect(localDevice.PVC.AccessModes).Should(ConsistOf(corev1.ReadWriteMany))
 					Expect(*localDevice.PVC.RequestStorage).Should(Equal(resource.MustParse("128G")))
 					Expect(*localDevice.PVC.StorageClassName).Should(Equal("standard"))
@@ -2736,7 +2735,7 @@ var _ = Describe("Hazelcast CR", func() {
 					}, Equal(
 						corev1.PersistentVolumeClaimSpec{
 							AccessModes: fetchedCR.Spec.LocalDevices[0].PVC.AccessModes,
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: *fetchedCR.Spec.LocalDevices[0].PVC.RequestStorage,
 								},
@@ -2756,7 +2755,7 @@ var _ = Describe("Hazelcast CR", func() {
 				ObjectMeta: randomObjectMeta(namespace),
 				Spec: hazelcastv1alpha1.HazelcastSpec{
 					LicenseKeySecretName: n.LicenseKeySecret,
-					ClusterSize:          pointer.Int32(5),
+					ClusterSize:          ptr.To(int32(5)),
 					CPSubsystem: &hazelcastv1alpha1.CPSubsystem{
 						PVC: &hazelcastv1alpha1.PvcConfiguration{
 							AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -2784,7 +2783,7 @@ var _ = Describe("Hazelcast CR", func() {
 				return a.Hazelcast.CPSubsystem
 			}, timeout, interval).Should(Equal(config.CPSubsystem{
 				CPMemberCount:      5,
-				GroupSize:          pointer.Int32(5),
+				GroupSize:          ptr.To(int32(5)),
 				BaseDir:            n.CPBaseDir,
 				PersistenceEnabled: true,
 			}))
@@ -2794,7 +2793,7 @@ var _ = Describe("Hazelcast CR", func() {
 				ObjectMeta: randomObjectMeta(namespace),
 				Spec: hazelcastv1alpha1.HazelcastSpec{
 					LicenseKeySecretName: n.LicenseKeySecret,
-					ClusterSize:          pointer.Int32(5),
+					ClusterSize:          ptr.To(int32(5)),
 					Persistence: &hazelcastv1alpha1.HazelcastPersistenceConfiguration{
 						PVC: &hazelcastv1alpha1.PvcConfiguration{
 							AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -2824,7 +2823,7 @@ var _ = Describe("Hazelcast CR", func() {
 				return a.Hazelcast.CPSubsystem
 			}, timeout, interval).Should(Equal(config.CPSubsystem{
 				CPMemberCount:      5,
-				GroupSize:          pointer.Int32(5),
+				GroupSize:          ptr.To(int32(5)),
 				BaseDir:            n.PersistenceMountPath + n.CPDirSuffix,
 				PersistenceEnabled: true,
 			}))
@@ -2846,7 +2845,7 @@ var _ = Describe("Hazelcast CR", func() {
 		It("DataLoadTimeoutSeconds cannot be zero", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.CPSubsystem = &hazelcastv1alpha1.CPSubsystem{
-				DataLoadTimeoutSeconds: pointer.Int32(0),
+				DataLoadTimeoutSeconds: ptr.To(int32(0)),
 			}
 			hz := &hazelcastv1alpha1.Hazelcast{
 				ObjectMeta: randomObjectMeta(namespace),
@@ -2858,8 +2857,8 @@ var _ = Describe("Hazelcast CR", func() {
 		It("Session TTL must be greater than session heartbeat interval", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.CPSubsystem = &hazelcastv1alpha1.CPSubsystem{
-				SessionTTLSeconds:               pointer.Int32(3),
-				SessionHeartbeatIntervalSeconds: pointer.Int32(5),
+				SessionTTLSeconds:               ptr.To(int32(3)),
+				SessionHeartbeatIntervalSeconds: ptr.To(int32(5)),
 			}
 			hz := &hazelcastv1alpha1.Hazelcast{
 				ObjectMeta: randomObjectMeta(namespace),
@@ -2872,8 +2871,8 @@ var _ = Describe("Hazelcast CR", func() {
 		It("Session TTL must be smaller than or equal to missing CP member auto-removal seconds", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 			spec.CPSubsystem = &hazelcastv1alpha1.CPSubsystem{
-				SessionTTLSeconds:                 pointer.Int32(10),
-				MissingCpMemberAutoRemovalSeconds: pointer.Int32(5),
+				SessionTTLSeconds:                 ptr.To(int32(10)),
+				MissingCpMemberAutoRemovalSeconds: ptr.To(int32(5)),
 			}
 			hz := &hazelcastv1alpha1.Hazelcast{
 				ObjectMeta: randomObjectMeta(namespace),
@@ -2885,7 +2884,7 @@ var _ = Describe("Hazelcast CR", func() {
 
 		It("Should not allow member count less than 3", func() {
 			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
-			spec.ClusterSize = pointer.Int32(2)
+			spec.ClusterSize = ptr.To(int32(2))
 			spec.CPSubsystem = &hazelcastv1alpha1.CPSubsystem{}
 			hz := &hazelcastv1alpha1.Hazelcast{
 				ObjectMeta: randomObjectMeta(namespace),

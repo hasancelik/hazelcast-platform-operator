@@ -10,7 +10,7 @@ import (
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -645,7 +645,7 @@ var _ = Describe("Hazelcast WAN", Label("platform_wan"), func() {
 					corev1.ResourceMemory: resource.MustParse(strconv.Itoa(mapSizeInMb*4) + "Mi")},
 			}
 			hazelcastSource.Spec.ClusterName = "source"
-			hazelcastSource.Spec.ClusterSize = pointer.Int32(3)
+			hazelcastSource.Spec.ClusterSize = ptr.To(int32(3))
 			CreateHazelcastCR(hazelcastSource)
 			evaluateReadyMembers(sourceLookupKey)
 
@@ -670,7 +670,7 @@ var _ = Describe("Hazelcast WAN", Label("platform_wan"), func() {
 					corev1.ResourceMemory: resource.MustParse(strconv.Itoa(mapSizeInMb*4) + "Mi")},
 			}
 			hazelcastTarget.Spec.ClusterName = "target"
-			hazelcastTarget.Spec.ClusterSize = pointer.Int32(3)
+			hazelcastTarget.Spec.ClusterSize = ptr.To(int32(3))
 			CreateHazelcastCR(hazelcastTarget)
 			targetAddress := waitForLBAddress(targetLookupKey)
 
@@ -770,7 +770,7 @@ var _ = Describe("Hazelcast WAN", Label("platform_wan"), func() {
 					corev1.ResourceMemory: resource.MustParse(strconv.Itoa(mapSizeInMb*4) + "Mi")},
 			}
 			hazelcastSource.Spec.ClusterName = "source"
-			hazelcastSource.Spec.ClusterSize = pointer.Int32(6)
+			hazelcastSource.Spec.ClusterSize = ptr.To(int32(6))
 			CreateHazelcastCR(hazelcastSource)
 			evaluateReadyMembers(sourceLookupKey)
 
@@ -795,7 +795,7 @@ var _ = Describe("Hazelcast WAN", Label("platform_wan"), func() {
 					corev1.ResourceMemory: resource.MustParse(strconv.Itoa(mapSizeInMb*4) + "Mi")},
 			}
 			hazelcastTarget.Spec.ClusterName = "target"
-			hazelcastTarget.Spec.ClusterSize = pointer.Int32(6)
+			hazelcastTarget.Spec.ClusterSize = ptr.To(int32(6))
 			CreateHazelcastCR(hazelcastTarget)
 			targetAddress := waitForLBAddress(targetLookupKey)
 

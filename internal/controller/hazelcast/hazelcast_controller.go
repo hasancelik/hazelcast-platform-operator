@@ -502,7 +502,7 @@ func (r *HazelcastReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&corev1.ServiceAccount{}).
-		WatchesRawSource(&source.Channel{Source: r.triggerReconcileChan}, &handler.EnqueueRequestForObject{}).
+		WatchesRawSource(source.Channel(r.triggerReconcileChan, &handler.EnqueueRequestForObject{})).
 		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(r.podUpdates)).
 		Watches(&hazelcastv1alpha1.Map{}, handler.EnqueueRequestsFromMapFunc(r.mapUpdates)).
 		Watches(&hazelcastv1alpha1.UserCodeNamespace{}, handler.EnqueueRequestsFromMapFunc(r.ucnUpdates))

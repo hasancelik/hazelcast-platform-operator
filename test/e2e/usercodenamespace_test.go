@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/test"
@@ -127,14 +127,14 @@ var _ = Describe("Hazelcast User Code Namespace", Group("user_code_namespace"), 
 
 		By("pause Hazelcast")
 		UpdateHazelcastCR(h, func(hazelcast *hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast {
-			hazelcast.Spec.ClusterSize = pointer.Int32(0)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(0))
 			return hazelcast
 		})
 		WaitForReplicaSize(h.Namespace, h.Name, 0)
 
 		By("resume Hazelcast")
 		UpdateHazelcastCR(h, func(hazelcast *hazelcastcomv1alpha1.Hazelcast) *hazelcastcomv1alpha1.Hazelcast {
-			hazelcast.Spec.ClusterSize = pointer.Int32(3)
+			hazelcast.Spec.ClusterSize = ptr.To(int32(3))
 			return hazelcast
 		})
 		WaitForReplicaSize(h.Namespace, h.Name, 3)
