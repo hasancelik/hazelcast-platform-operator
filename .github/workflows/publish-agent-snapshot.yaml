@@ -6,6 +6,9 @@ on:
     paths:
       - "agent/**"
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   publish-snapshot-image:
     name: Publish Agent Snapshot to Docker Hub
