@@ -33,17 +33,9 @@ jobs:
             DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
 
       - name: Set Up Golang
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: "1.22.5"
-
-      - name: Cache Golang Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Set Up Docker Buildx
         id: buildx
