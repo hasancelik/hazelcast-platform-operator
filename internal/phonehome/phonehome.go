@@ -86,6 +86,7 @@ type PhoneHomeData struct {
 	ExposeExternally              ExposeExternally       `json:"xe"`
 	Map                           Map                    `json:"m"`
 	Cache                         Cache                  `json:"c"`
+	VectorCollection              VectorCollection       `json:"vc"`
 	Jet                           Jet                    `json:"jet"`
 	WanReplicationCount           int                    `json:"wrc"`
 	WanSyncCount                  int                    `json:"wsc"`
@@ -161,6 +162,10 @@ type Cache struct {
 	NativeMemoryCount int `json:"nmc"`
 }
 
+type VectorCollection struct {
+	Count int `json:"c"`
+}
+
 type Jet struct {
 	Count int `json:"c"`
 }
@@ -220,6 +225,7 @@ func newPhoneHomeData(cl client.Client, opInfo *OperatorInfo) PhoneHomeData {
 	phd.fillMCMetrics(cl)
 	phd.fillMapMetrics(cl)
 	phd.fillCacheMetrics(cl)
+	phd.fillVectorCollectionMetrics(cl)
 	phd.fillWanReplicationMetrics(cl)
 	phd.fillWanSyncMetrics(cl)
 	phd.fillHotBackupMetrics(cl)
@@ -541,6 +547,15 @@ func (phm *PhoneHomeData) fillCacheMetrics(cl client.Client) {
 	phm.Cache.Count = createdCacheCount
 	phm.Cache.PersistenceCount = persistedCacheCount
 	phm.Cache.NativeMemoryCount = nativeMemoryCacheCount
+}
+
+func (phm *PhoneHomeData) fillVectorCollectionMetrics(cl client.Client) {
+	vcl := &hazelcastv1alpha1.VectorCollectionList{}
+	err := cl.List(context.Background(), vcl, listOptions()...)
+	if err != nil {
+		return
+	}
+	phm.VectorCollection.Count = len(vcl.Items)
 }
 
 func (phm *PhoneHomeData) fillWanReplicationMetrics(cl client.Client) {

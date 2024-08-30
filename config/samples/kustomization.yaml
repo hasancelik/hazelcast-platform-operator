@@ -16,4 +16,6 @@ resources:
 - _v1alpha1_hazelcastendpoint.yaml
 - _v1alpha1_wansync.yaml
 - _v1alpha1_usercodenamespace.yaml
+- v1alpha1_vectorcollection.yaml
+- _v1alpha1_vectorcollection.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -23,6 +23,7 @@ var (
 	rmLookupKey    = types.NamespacedName{}
 	jjLookupKey    = types.NamespacedName{}
 	jjsLookupKey   = types.NamespacedName{}
+	vcLookupKey    = types.NamespacedName{}
 )
 
 var (
@@ -45,6 +46,7 @@ func setCRNamespace(ns string) {
 	mmLookupKey.Namespace = ns
 	qLookupKey.Namespace = ns
 	chLookupKey.Namespace = ns
+	vcLookupKey.Namespace = ns
 	rmLookupKey.Namespace = ns
 	hzSrcLookupKey.Namespace = ns
 	hzTrgLookupKey.Namespace = ns
@@ -70,6 +72,7 @@ func setLabelAndCRName(n string) string {
 	topicLookupKey.Name = n
 	qLookupKey.Name = n
 	chLookupKey.Name = n
+	vcLookupKey.Name = n
 	rmLookupKey.Name = n
 	jjLookupKey.Name = n
 	jjsLookupKey.Name = n

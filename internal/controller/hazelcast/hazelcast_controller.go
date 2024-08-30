@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/hazelcast/mutate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -21,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/hazelcast/mutate"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	recoptions "github.com/hazelcast/hazelcast-platform-operator/internal/controller"
@@ -467,6 +468,12 @@ func (r *HazelcastReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &hazelcastv1alpha1.Cache{}, "hazelcastResourceName", func(rawObj client.Object) []string {
 		m := rawObj.(*hazelcastv1alpha1.Cache)
+		return []string{m.Spec.HazelcastResourceName}
+	}); err != nil {
+		return err
+	}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &hazelcastv1alpha1.VectorCollection{}, "hazelcastResourceName", func(rawObj client.Object) []string {
+		m := rawObj.(*hazelcastv1alpha1.VectorCollection)
 		return []string{m.Spec.HazelcastResourceName}
 	}); err != nil {
 		return err

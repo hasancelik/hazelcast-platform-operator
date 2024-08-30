@@ -105,6 +105,7 @@ func (r *HazelcastReconciler) deleteDependentCRs(ctx context.Context, h *hazelca
 		"Cache":             &hazelcastv1alpha1.CacheList{},
 		"JetJob":            &hazelcastv1alpha1.JetJobList{},
 		"UserCodeNamespace": &hazelcastv1alpha1.UserCodeNamespaceList{},
+		"VectorCollection":  &hazelcastv1alpha1.VectorCollectionList{},
 	}
 
 	for crKind, crList := range dependentCRs {

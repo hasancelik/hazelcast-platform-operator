@@ -113,6 +113,8 @@ func HazelcastConfig(ctx context.Context, c client.Client, h *hazelcastv1alpha1.
 			fillHazelcastConfigWithQueues(&cfg, filteredDSList)
 		case "Cache":
 			fillHazelcastConfigWithCaches(&cfg, filteredDSList)
+		case "VectorCollection":
+			fillHazelcastConfigWithVectorCollections(&cfg, filteredDSList)
 		}
 	}
 
@@ -847,6 +849,17 @@ func fillHazelcastConfigWithCaches(cfg *Hazelcast, cl []client.Object) {
 	}
 }
 
+func fillHazelcastConfigWithVectorCollections(cfg *Hazelcast, cl []client.Object) {
+	if len(cl) != 0 {
+		cfg.VectorCollection = map[string]VectorCollection{}
+		for _, vc := range cl {
+			vc := vc.(*hazelcastv1alpha1.VectorCollection)
+			vccfg := CreateVectorCollectionConfig(vc)
+			cfg.VectorCollection[vc.GetDSName()] = vccfg
+		}
+	}
+}
+
 func fillHazelcastConfigWithReplicatedMaps(cfg *Hazelcast, rml []client.Object) {
 	if len(rml) != 0 {
 		cfg.ReplicatedMap = map[string]ReplicatedMap{}
@@ -1180,6 +1193,23 @@ func CreateCacheConfig(c *hazelcastv1alpha1.Cache) Cache {
 	}
 
 	return cache
+}
+
+func CreateVectorCollectionConfig(c *hazelcastv1alpha1.VectorCollection) VectorCollection {
+	indexes := make([]VectorCollectionIndex, 0)
+	for _, ix := range c.Spec.Indexes {
+		indexes = append(indexes, VectorCollectionIndex{
+			Name:             ix.Name,
+			Metric:           strings.ToUpper(string(ix.Metric)),
+			Dimension:        ix.Dimension,
+			MaxDegree:        ix.MaxDegree,
+			EfConstruction:   ix.EfConstruction,
+			UseDeduplication: ix.UseDeduplication,
+		})
+	}
+	return VectorCollection{
+		Indexes: indexes,
+	}
 }
 
 func CreateTopicConfig(t *hazelcastv1alpha1.Topic) Topic {

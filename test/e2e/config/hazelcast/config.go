@@ -960,6 +960,28 @@ var (
 			Spec: ucns,
 		}
 	}
+
+	VectorCollection = func(lk types.NamespacedName, hzName string, lbls map[string]string) *hazelcastcomv1alpha1.VectorCollection {
+		return &hazelcastcomv1alpha1.VectorCollection{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      lk.Name,
+				Namespace: lk.Namespace,
+				Labels:    lbls,
+			},
+			Spec: hazelcastcomv1alpha1.VectorCollectionSpec{
+				HazelcastResourceName: hzName,
+				Indexes: []hazelcastcomv1alpha1.VectorIndex{
+					{
+						Dimension:        10,
+						EfConstruction:   256,
+						MaxDegree:        32,
+						Metric:           hazelcastcomv1alpha1.Dot,
+						UseDeduplication: false,
+					},
+				},
+			},
+		}
+	}
 )
 
 const (

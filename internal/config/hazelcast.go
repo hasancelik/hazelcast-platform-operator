@@ -20,6 +20,7 @@ type Hazelcast struct {
 	ReplicatedMap            map[string]ReplicatedMap            `yaml:"replicatedmap,omitempty"`
 	Queue                    map[string]Queue                    `yaml:"queue,omitempty"`
 	Cache                    map[string]Cache                    `yaml:"cache,omitempty"`
+	VectorCollection         map[string]VectorCollection         `yaml:"vector-collection,omitempty"`
 	PartitionGroup           PartitionGroup                      `yaml:"partition-group,omitempty"`
 	NativeMemory             NativeMemory                        `yaml:"native-memory,omitempty"`
 	AdvancedNetwork          AdvancedNetwork                     `yaml:"advanced-network,omitempty"`
@@ -335,6 +336,19 @@ type Cache struct {
 	DataPersistence   DataPersistence `yaml:"data-persistence,omitempty"`
 	EventJournal      EventJournal    `yaml:"event-journal,omitempty"`
 	UserCodeNamespace string          `yaml:"user-code-namespace,omitempty"`
+}
+
+type VectorCollection struct {
+	Indexes []VectorCollectionIndex `yaml:"indexes"`
+}
+
+type VectorCollectionIndex struct {
+	Name             string `yaml:"name,omitempty"`
+	Dimension        int32  `yaml:"dimension"`
+	Metric           string `yaml:"metric"`
+	MaxDegree        int32  `yaml:"max-degree"`
+	EfConstruction   int32  `yaml:"ef-construction"`
+	UseDeduplication bool   `yaml:"use-deduplication"`
 }
 
 type ClassType struct {

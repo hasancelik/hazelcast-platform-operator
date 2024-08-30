@@ -290,6 +290,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = hazelcast.NewVectorCollectionReconciler(
+		mgr.GetClient(),
+		controllerLogger.WithName("VectorCollection"),
+		mgr.GetScheme(),
+		phoneHomeTrigger,
+		cr,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VectorCollection")
+		os.Exit(1)
+	}
+
 	setupWithWebhookOrDie(mgr)
 
 	//+kubebuilder:scaffold:builder
@@ -387,6 +398,10 @@ func setupWithWebhookOrDie(mgr ctrl.Manager) {
 	}
 	if err := (&hazelcastcomv1alpha1.UserCodeNamespace{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "UserCodeNamespace")
+		os.Exit(1)
+	}
+	if err := (&hazelcastcomv1alpha1.VectorCollection{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "VectorCollection")
 		os.Exit(1)
 	}
 }

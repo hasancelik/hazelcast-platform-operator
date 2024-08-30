@@ -1,0 +1,27 @@
+# permissions for end users to edit vectorcollections.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: hazelcast-platform-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vectorcollection-editor-role
+rules:
+- apiGroups:
+  - hazelcast.com
+  resources:
+  - vectorcollections
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - hazelcast.com
+  resources:
+  - vectorcollections/status
+  verbs:
+  - get

@@ -1115,6 +1115,18 @@ func getCacheConfigFromMemberConfig(memberConfigXML string, cacheName string) *c
 	return nil
 }
 
+func getVectorCollectionConfigFromMemberConfig(memberConfigXML string, vectorName string) *codecTypes.VectorCollectionInput {
+	var vcs codecTypes.VectorCollectionConfigs
+	err := xml.Unmarshal([]byte(memberConfigXML), &vcs)
+	Expect(err).To(BeNil())
+	for _, vc := range vcs.VectorCollections {
+		if vc.Name == vectorName {
+			return &vc
+		}
+	}
+	return nil
+}
+
 func getMapConfigFromMemberConfig(memberConfigXML string, mapName string) *codecTypes.AddMapConfigInput {
 	var maps codecTypes.MapConfigs
 	err := xml.Unmarshal([]byte(memberConfigXML), &maps)

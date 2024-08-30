@@ -219,6 +219,7 @@ Rules needed for operator watched namespaces
   - replicatedmaps
   - topics
   - usercodenamespaces
+  - vectorcollections
   - wansyncs
   - wanreplications
   verbs:
@@ -246,6 +247,7 @@ Rules needed for operator watched namespaces
   - replicatedmaps/finalizers
   - topics/finalizers
   - usercodenamespaces/finalizers
+  - vectorcollections/finalizers
   - wansyncs/finalizers
   - wanreplications/finalizers
   verbs:
@@ -267,6 +269,7 @@ Rules needed for operator watched namespaces
   - replicatedmaps/status
   - topics/status
   - usercodenamespaces/status
+  - vectorcollections/status
   - wansyncs/status
   - wanreplications/status
   verbs:

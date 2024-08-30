@@ -61,7 +61,9 @@ func FakeK8sClient(initObjs ...client.Object) client.Client {
 			&hazelcastv1alpha1.WanSyncList{},
 			&hazelcastv1alpha1.HazelcastEndpoint{},
 			&hazelcastv1alpha1.HazelcastEndpointList{},
-			&hazelcastv1alpha1.UserCodeNamespace{}).
+			&hazelcastv1alpha1.UserCodeNamespace{},
+			&hazelcastv1alpha1.VectorCollection{},
+			&hazelcastv1alpha1.VectorCollectionList{}).
 		Build()
 
 	_ = corev1.AddToScheme(scheme)
@@ -85,7 +87,8 @@ func FakeK8sClient(initObjs ...client.Object) client.Client {
 			&hazelcastv1alpha1.WanReplication{},
 			&hazelcastv1alpha1.WanSync{},
 			&hazelcastv1alpha1.HazelcastEndpoint{},
-			&hazelcastv1alpha1.UserCodeNamespace{}).
+			&hazelcastv1alpha1.UserCodeNamespace{},
+			&hazelcastv1alpha1.VectorCollection{}).
 		WithIndex(&hazelcastv1alpha1.Map{}, "hazelcastResourceName", func(o client.Object) []string {
 			hzMap := o.(*hazelcastv1alpha1.Map)
 			return []string{hzMap.Spec.HazelcastResourceName}
@@ -134,6 +137,10 @@ func FakeK8sClient(initObjs ...client.Object) client.Client {
 		WithIndex(&hazelcastv1alpha1.UserCodeNamespace{}, "hazelcastResourceName", func(o client.Object) []string {
 			ucn := o.(*hazelcastv1alpha1.UserCodeNamespace)
 			return []string{ucn.Spec.HazelcastResourceName}
+		}).
+		WithIndex(&hazelcastv1alpha1.VectorCollection{}, "hazelcastResourceName", func(o client.Object) []string {
+			cache := o.(*hazelcastv1alpha1.VectorCollection)
+			return []string{cache.Spec.HazelcastResourceName}
 		}).
 		Build()
 }
