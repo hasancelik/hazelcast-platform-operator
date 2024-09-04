@@ -52,7 +52,6 @@ func (v *hazelcastValidator) validateSpecCurrent(h *Hazelcast) {
 	v.validateLicense(h)
 	v.validateTLS(h)
 	v.validatePersistence(h)
-	v.validateClusterSize(h)
 	v.validateAdvancedNetwork(h)
 	v.validateJetConfig(h)
 	v.validateJVMConfig(h)
@@ -242,12 +241,6 @@ func (v *hazelcastValidator) validatePersistence(h *Hazelcast) {
 			// we care only about not found error
 			v.NotFound(Path("spec", "persistence", "restore", "hotBackupResourceName"), fmt.Sprintf("There is not hot backup found with name %s", p.Restore.HotBackupResourceName))
 		}
-	}
-}
-
-func (v *hazelcastValidator) validateClusterSize(h *Hazelcast) {
-	if *h.Spec.ClusterSize > n.ClusterSizeLimit {
-		v.Invalid(Path("spec", "clusterSize"), h.Spec.ClusterSize, fmt.Sprintf("may not be greater than %d", n.ClusterSizeLimit))
 	}
 }
 

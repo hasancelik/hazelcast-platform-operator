@@ -9,6 +9,7 @@ import (
 )
 
 // TopicSpec defines the desired state of Topic
+// +kubebuilder:validation:XValidation:message="multi threading can not be enabled when global ordering is used",rule="!self.globalOrderingEnabled || !self.multiThreadingEnabled"
 type TopicSpec struct {
 	// Name of the topic config to be created. If empty, CR name will be used.
 	// +optional
@@ -96,7 +97,7 @@ func (t *Topic) SetSpec(spec string) error {
 }
 
 func (t *Topic) ValidateSpecCurrent(_ *Hazelcast) error {
-	return validateTopicSpecCurrent(t)
+	return nil
 }
 
 func (t *Topic) ValidateSpecUpdate() error {

@@ -96,10 +96,6 @@ func (mm *MultiMap) ValidateSpecCurrent(_ *Hazelcast) error {
 	return nil
 }
 
-func (mm *MultiMap) ValidateSpecCreate() error {
-	return validateMultiMapSpecCreate(mm)
-}
-
 func (mm *MultiMap) ValidateSpecUpdate() error {
 	return validateMultiMapSpecUpdate(mm)
 }

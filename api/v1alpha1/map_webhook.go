@@ -24,7 +24,7 @@ var _ webhook.Validator = &Map{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (m *Map) ValidateCreate() (admission.Warnings, error) {
 	maplog.Info("validate create", "name", m.Name)
-	return admission.Warnings{}, ValidateMapSpecCreate(m)
+	return admission.Warnings{}, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

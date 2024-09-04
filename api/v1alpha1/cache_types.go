@@ -98,10 +98,6 @@ func (c *Cache) ValidateSpecCurrent(h *Hazelcast) error {
 	return ValidateCacheSpecCurrent(c, h)
 }
 
-func (c *Cache) ValidateSpecCreate() error {
-	return validateCacheSpecCreate(c)
-}
-
 func (c *Cache) ValidateSpecUpdate() error {
 	return validateCacheSpecUpdate(c)
 }

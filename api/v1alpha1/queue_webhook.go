@@ -24,7 +24,7 @@ var _ webhook.Validator = &Queue{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Queue) ValidateCreate() (admission.Warnings, error) {
 	queuelog.Info("validate create", "name", r.Name)
-	return admission.Warnings{}, r.ValidateSpecCreate()
+	return admission.Warnings{}, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

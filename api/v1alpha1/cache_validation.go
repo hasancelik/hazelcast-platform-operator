@@ -17,16 +17,9 @@ func NewCacheValidator(o client.Object) cacheValidator {
 	return cacheValidator{NewDatastructValidator(o)}
 }
 
-func validateCacheSpecCreate(c *Cache) error {
-	v := NewCacheValidator(c)
-	v.validateDataStructureSpec(&c.Spec.DataStructureSpec)
-	return v.Err()
-}
-
 func validateCacheSpecUpdate(c *Cache) error {
 	v := NewCacheValidator(c)
 	v.validateDSSpecUnchanged(c)
-	v.validateDataStructureSpec(&c.Spec.DataStructureSpec)
 	return v.Err()
 }
 

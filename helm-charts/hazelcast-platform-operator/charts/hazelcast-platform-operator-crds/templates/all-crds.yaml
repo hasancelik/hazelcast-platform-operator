@@ -126,6 +126,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: the sum of backupCount and asyncBackupCount can't be larger
+                than 6
+              rule: (self.backupCount + self.asyncBackupCount) <= 6
           status:
             description: CacheStatus defines the observed state of Cache
             properties:
@@ -582,6 +586,7 @@ spec:
                 default: 3
                 description: Number of Hazelcast members in the cluster.
                 format: int32
+                maximum: 300
                 minimum: 0
                 type: integer
               cpSubsystem:
@@ -5297,6 +5302,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: the sum of backupCount and asyncBackupCount can't be larger
+                than 6
+              rule: (self.backupCount + self.asyncBackupCount) <= 6
           status:
             description: MapStatus defines the observed state of Map
             properties:
@@ -5431,6 +5440,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: the sum of backupCount and asyncBackupCount can't be larger
+                than 6
+              rule: (self.backupCount + self.asyncBackupCount) <= 6
           status:
             description: MultiMapStatus defines the observed state of MultiMap
             properties:
@@ -5576,6 +5589,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: the sum of backupCount and asyncBackupCount can't be larger
+                than 6
+              rule: (self.backupCount + self.asyncBackupCount) <= 6
           status:
             description: QueueStatus defines the observed state of Queue
             properties:
@@ -5816,6 +5833,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: multi threading can not be enabled when global ordering is
+                used
+              rule: '!self.globalOrderingEnabled || !self.multiThreadingEnabled'
           status:
             description: TopicStatus defines the observed state of Topic
             properties:

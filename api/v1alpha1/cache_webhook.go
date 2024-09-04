@@ -24,7 +24,7 @@ var _ webhook.Validator = &Cache{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (c *Cache) ValidateCreate() (admission.Warnings, error) {
 	cachelog.Info("validate create", "name", c.Name)
-	return admission.Warnings{}, c.ValidateSpecCreate()
+	return admission.Warnings{}, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

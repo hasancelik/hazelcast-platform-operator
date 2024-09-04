@@ -22,6 +22,8 @@ type DataStructure interface {
 	ValidateSpecUpdate() error
 }
 
+// DataStructureSpec is a common spec for data structures.
+// +kubebuilder:validation:XValidation:message="the sum of backupCount and asyncBackupCount can't be larger than 6",rule="(self.backupCount + self.asyncBackupCount) <= 6"
 type DataStructureSpec struct {
 	// Name of the data structure config to be created. If empty, CR name will be used.
 	// It cannot be updated after the config is created successfully.

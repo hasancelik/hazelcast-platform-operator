@@ -83,6 +83,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: multi threading can not be enabled when global ordering is
+                used
+              rule: '!self.globalOrderingEnabled || !self.multiThreadingEnabled'
           status:
             description: TopicStatus defines the observed state of Topic
             properties:

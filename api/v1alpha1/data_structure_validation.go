@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"errors"
 
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -15,14 +14,6 @@ type datastructValidator struct {
 
 func NewDatastructValidator(o client.Object) datastructValidator {
 	return datastructValidator{NewFieldValidator(o)}
-}
-
-func (v *datastructValidator) validateDataStructureSpec(ds *DataStructureSpec) {
-	if ptr.Deref(ds.BackupCount, 0)+ds.AsyncBackupCount > 6 {
-		detail := "the sum of backupCount and asyncBackupCount can't be larger than than 6"
-		v.Invalid(Path("spec", "backupCount"), ds.BackupCount, detail)
-		v.Invalid(Path("spec", "asyncBackupCount"), ds.AsyncBackupCount, detail)
-	}
 }
 
 func (v *datastructValidator) validateDSSpecUnchanged(obj client.Object) {
@@ -43,11 +34,11 @@ func isDSSpecUnchanged(obj client.Object) (bool, error) {
 	}
 	ds, ok := obj.(DataStructure)
 	if !ok {
-		return false, errors.New("Object is not a data structure")
+		return false, errors.New("object is not a data structure")
 	}
 	newSpec, err := ds.GetSpec()
 	if err != nil {
-		return false, errors.New("Could not get spec of the data structure")
+		return false, errors.New("could not get spec of the data structure")
 	}
 	return newSpec == lastSpec, nil
 }

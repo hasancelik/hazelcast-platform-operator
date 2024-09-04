@@ -281,7 +281,7 @@ var _ = Describe("Hazelcast CR", func() {
 			}
 
 			Expect(k8sClient.Create(context.Background(), hz)).
-				Should(MatchError(ContainSubstring("Invalid value: 301: may not be greater than 300")))
+				Should(MatchError(ContainSubstring("Invalid value: 301: spec.clusterSize in body should be less than or equal to 300")))
 		})
 
 		It("should fail if CR name is not a valid DNS label", func() {
@@ -2197,7 +2197,6 @@ var _ = Describe("Hazelcast CR", func() {
 				DiscoveryServiceType: "InvalidServiceType",
 				MemberAccess:         hazelcastv1alpha1.MemberAccessLoadBalancer,
 			}
-			spec.ClusterSize = ptr.To(int32(5000))
 			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
 				WAN: []hazelcastv1alpha1.WANConfig{
 					{
@@ -2219,8 +2218,6 @@ var _ = Describe("Hazelcast CR", func() {
 			err := k8sClient.Create(context.Background(), hz)
 			Expect(err).Should(MatchError(
 				ContainSubstring("spec.exposeExternally.memberAccess:")))
-			Expect(err).Should(MatchError(
-				ContainSubstring("spec.clusterSize:")))
 			Expect(err).Should(MatchError(
 				ContainSubstring("spec.advancedNetwork.wan[0].port:")))
 			Expect(err).Should(MatchError(

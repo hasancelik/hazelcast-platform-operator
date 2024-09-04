@@ -411,6 +411,10 @@ spec:
             required:
             - hazelcastResourceName
             type: object
+            x-kubernetes-validations:
+            - message: the sum of backupCount and asyncBackupCount can't be larger
+                than 6
+              rule: (self.backupCount + self.asyncBackupCount) <= 6
           status:
             description: MapStatus defines the observed state of Map
             properties:

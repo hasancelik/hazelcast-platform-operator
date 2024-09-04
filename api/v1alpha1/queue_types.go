@@ -94,10 +94,6 @@ func (q *Queue) ValidateSpecCurrent(_ *Hazelcast) error {
 	return nil
 }
 
-func (q *Queue) ValidateSpecCreate() error {
-	return validateQueueSpecCreate(q)
-}
-
 func (q *Queue) ValidateSpecUpdate() error {
 	return validateQueueSpecUpdate(q)
 }

@@ -45,6 +45,7 @@ const (
 type HazelcastSpec struct {
 	// Number of Hazelcast members in the cluster.
 	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=300
 	// +kubebuilder:default:=3
 	// +optional
 	ClusterSize *int32 `json:"clusterSize,omitempty"`

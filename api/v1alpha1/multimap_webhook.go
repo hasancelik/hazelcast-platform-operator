@@ -24,7 +24,7 @@ var _ webhook.Validator = &MultiMap{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *MultiMap) ValidateCreate() (admission.Warnings, error) {
 	multimaplog.Info("validate create", "name", r.Name)
-	return admission.Warnings{}, r.ValidateSpecCreate()
+	return admission.Warnings{}, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

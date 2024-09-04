@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+
+	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 )
 
 var _ = Describe("Map CR", func() {
@@ -308,6 +309,24 @@ var _ = Describe("Map CR", func() {
 			}
 
 			Expect(err).Should(MatchError(ContainSubstring("field cannot be updated")))
+		})
+	})
+
+	Context("DataStructure validation", func() {
+		It("Should not allow more than 6 backups", func() {
+			m := &hazelcastv1alpha1.Map{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec: hazelcastv1alpha1.MapSpec{
+					DataStructureSpec: hazelcastv1alpha1.DataStructureSpec{
+						HazelcastResourceName: "hazelcast",
+						BackupCount:           ptr.To(int32(5)),
+						AsyncBackupCount:      2,
+					},
+				},
+			}
+			By("creating Map CR successfully")
+			Expect(k8sClient.Create(context.Background(), m)).Should(
+				MatchError(ContainSubstring("the sum of backupCount and asyncBackupCount can't be larger than 6")))
 		})
 	})
 })

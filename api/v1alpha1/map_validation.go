@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
-	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 )
 
 type mapValidator struct {
@@ -17,16 +18,9 @@ func NewMapValidator(o client.Object) mapValidator {
 	return mapValidator{NewDatastructValidator(o)}
 }
 
-func ValidateMapSpecCreate(m *Map) error {
-	v := NewMapValidator(m)
-	v.validateDataStructureSpec(&m.Spec.DataStructureSpec)
-	return v.Err()
-}
-
 func ValidateMapSpecUpdate(m *Map) error {
 	v := NewMapValidator(m)
 	v.validateMapSpecUpdate(m)
-	v.validateDataStructureSpec(&m.Spec.DataStructureSpec)
 	return v.Err()
 }
 
@@ -34,7 +28,6 @@ func ValidateMapSpec(m *Map, h *Hazelcast) error {
 	v := NewMapValidator(m)
 	v.validateMapSpecCurrent(m, h)
 	v.validateMapSpecUpdate(m)
-	v.validateDataStructureSpec(&m.Spec.DataStructureSpec)
 	return v.Err()
 }
 

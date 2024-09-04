@@ -54,4 +54,17 @@ var _ = Describe("Topic CR", func() {
 			})
 		})
 	})
+	Context("Topic validation", func() {
+		It("should not allow multi threading when global ordering is used", func() {
+			t := &hazelcastv1alpha1.Topic{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec: hazelcastv1alpha1.TopicSpec{
+					HazelcastResourceName: "hazelcast",
+					GlobalOrderingEnabled: true,
+					MultiThreadingEnabled: true,
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), t)).Should(MatchError(ContainSubstring("multi threading can not be enabled when global ordering is used")))
+		})
+	})
 })
