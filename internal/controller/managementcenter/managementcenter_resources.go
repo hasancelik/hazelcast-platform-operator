@@ -3,15 +3,14 @@ package managementcenter
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
-	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,6 +22,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"software.sslmate.com/src/go-pkcs12"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -359,7 +359,7 @@ func (r *ManagementCenterReconciler) reconcileSecret(ctx context.Context, mc *ha
 				if err != nil {
 					return err
 				}
-				files[cluster.Name+".jks"] = keystore
+				files[cluster.Name+".p12"] = keystore
 			}
 			clientConfig, err := hazelcastClientConfig(ctx, r.Client, &cluster)
 			if err != nil {
@@ -589,32 +589,28 @@ func javaOPTS(mc *hazelcastv1alpha1.ManagementCenter) string {
 }
 
 func hazelcastKeystore(ctx context.Context, c client.Client, mc *hazelcastv1alpha1.ManagementCenter, secretName string) ([]byte, error) {
-	var (
-		store    = keystore.New()
-		password = []byte("hazelcast")
-	)
+	password := "hazelcast"
+	var b []byte
 	if secretName != "" {
 		cert, key, err := loadTLSKeyPair(ctx, c, mc, secretName)
 		if err != nil {
 			return nil, err
 		}
-		err = store.SetPrivateKeyEntry("hazelcast", keystore.PrivateKeyEntry{
-			CreationTime: time.Now(),
-			PrivateKey:   key,
-			CertificateChain: []keystore.Certificate{{
-				Type:    "X509",
-				Content: cert,
-			}},
-		}, password)
+		crt, err := x509.ParseCertificate(cert)
+		if err != nil {
+			return nil, err
+		}
+		pvtKey, err := x509.ParsePKCS8PrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+		encoder := pkcs12.Modern2023
+		b, err = encoder.Encode(pvtKey, crt, nil, password)
 		if err != nil {
 			return nil, err
 		}
 	}
-	var b bytes.Buffer
-	if err := store.Store(&b, password); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
+	return b, nil
 }
 
 func loadTLSKeyPair(ctx context.Context, c client.Client, mc *hazelcastv1alpha1.ManagementCenter, secretName string) (cert []byte, key []byte, err error) {
@@ -664,7 +660,7 @@ func hazelcastClientConfig(ctx context.Context, c client.Client, config *hazelca
 			Enabled:          true,
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
 			Properties: NewSSLProperties(
-				path.Join("/config", config.Name+".jks"),
+				path.Join("/config", config.Name+".p12"),
 				config.TLS.MutualAuthentication,
 			),
 		}
@@ -703,9 +699,11 @@ type SSL struct {
 
 func NewSSLProperties(path string, auth hazelcastv1alpha1.MutualAuthentication) map[string]string {
 	const pass = "hazelcast"
+	const typ = "PKCS12"
 	switch auth {
 	case hazelcastv1alpha1.MutualAuthenticationRequired:
 		return map[string]string{
+			"keyStoreType":       typ,
 			"protocol":           "TLSv1.2",
 			"keyStore":           path,
 			"keyStorePassword":   pass,
@@ -714,6 +712,7 @@ func NewSSLProperties(path string, auth hazelcastv1alpha1.MutualAuthentication) 
 		}
 	default:
 		return map[string]string{
+			"keyStoreType":       typ,
 			"protocol":           "TLSv1.2",
 			"trustStore":         path,
 			"trustStorePassword": pass,

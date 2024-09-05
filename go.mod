@@ -19,7 +19,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	github.com/openshift/api v0.0.0-20220715133027-dab5b363ebd1
-	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tufin/oasdiff v1.10.16
@@ -36,6 +35,7 @@ require (
 	k8s.io/client-go v0.30.0
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/controller-runtime v0.18.0
+	software.sslmate.com/src/go-pkcs12 v0.4.0
 )
 
 require (

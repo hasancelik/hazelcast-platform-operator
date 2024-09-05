@@ -311,20 +311,20 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 
 	if h.Spec.TLS != nil && h.Spec.TLS.SecretName != "" {
 		var (
-			jksPath  = path.Join(n.HazelcastMountPath, "hazelcast.jks")
+			p12Path  = path.Join(n.HazelcastMountPath, "hazelcast.p12")
 			password = "hazelcast"
 		)
 		// require MTLS for member-member communication
 		cfg.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL = SSL{
 			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
-			Properties:       NewSSLProperties(jksPath, password, "TLS", hazelcastv1alpha1.MutualAuthenticationRequired),
+			Properties:       NewSSLProperties(p12Path, password, "TLS", hazelcastv1alpha1.MutualAuthenticationRequired),
 		}
 		// for client-server configuration use only server TLS
 		cfg.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL = SSL{
 			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
-			Properties:       NewSSLProperties(jksPath, password, "TLS", h.Spec.TLS.MutualAuthentication),
+			Properties:       NewSSLProperties(p12Path, password, "TLS", h.Spec.TLS.MutualAuthentication),
 		}
 	}
 
@@ -362,7 +362,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 }
 
 func NewSSLProperties(path, password, protocol string, auth hazelcastv1alpha1.MutualAuthentication) SSLProperties {
-	const typ = "JKS"
+	const typ = "PKCS12"
 	switch auth {
 	case hazelcastv1alpha1.MutualAuthenticationRequired:
 		return SSLProperties{

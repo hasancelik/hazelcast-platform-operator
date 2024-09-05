@@ -1,8 +1,8 @@
 package hazelcast
 
 import (
-	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	errs "errors"
@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	proto "github.com/hazelcast/hazelcast-go-client"
@@ -23,7 +22,6 @@ import (
 	downloadurl "github.com/hazelcast/hazelcast-platform-operator/agent/init/file_download_url"
 	downloadbucket "github.com/hazelcast/hazelcast-platform-operator/agent/init/jar_download_bucket"
 	"github.com/hazelcast/hazelcast-platform-operator/agent/init/restore"
-	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
@@ -38,6 +36,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"software.sslmate.com/src/go-pkcs12"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
@@ -982,12 +981,12 @@ func (r *HazelcastReconciler) reconcileSecret(ctx context.Context, h *hazelcastv
 			}
 			scrt.Data["hazelcast.yaml"] = cfg
 
-			if _, ok := scrt.Data["hazelcast.jks"]; !ok {
+			if _, ok := scrt.Data["hazelcast.p12"]; !ok {
 				keystore, err := hazelcastKeystore(ctx, r.Client, h)
 				if err != nil {
 					return err
 				}
-				scrt.Data["hazelcast.jks"] = keystore
+				scrt.Data["hazelcast.p12"] = keystore
 			}
 
 			return nil
@@ -1192,32 +1191,28 @@ func restoreLocalInitContainer(h *hazelcastv1alpha1.Hazelcast, conf hazelcastv1a
 }
 
 func hazelcastKeystore(ctx context.Context, c client.Client, h *hazelcastv1alpha1.Hazelcast) ([]byte, error) {
-	var (
-		store    = keystore.New()
-		password = []byte("hazelcast")
-	)
+	password := "hazelcast"
+	var b []byte
 	if h.Spec.TLS != nil && h.Spec.TLS.SecretName != "" {
 		cert, key, err := loadTLSKeyPair(ctx, c, h)
 		if err != nil {
 			return nil, err
 		}
-		err = store.SetPrivateKeyEntry("hazelcast", keystore.PrivateKeyEntry{
-			CreationTime: time.Now(),
-			PrivateKey:   key,
-			CertificateChain: []keystore.Certificate{{
-				Type:    "X509",
-				Content: cert,
-			}},
-		}, password)
+		crt, err := x509.ParseCertificate(cert)
+		if err != nil {
+			return nil, err
+		}
+		pvtKey, err := x509.ParsePKCS8PrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+		encoder := pkcs12.Modern2023
+		b, err = encoder.Encode(pvtKey, crt, nil, password)
 		if err != nil {
 			return nil, err
 		}
 	}
-	var b bytes.Buffer
-	if err := store.Store(&b, password); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
+	return b, nil
 }
 
 func loadTLSKeyPair(ctx context.Context, c client.Client, h *hazelcastv1alpha1.Hazelcast) (cert []byte, key []byte, err error) {
