@@ -97,17 +97,3 @@ jobs:
           echo ${{ secrets.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
           gh pr create --title \
           "Bump 'platform-operator-agent' image version to ${RELEASE_VERSION}" --body "" --repo ${REPO_OWNER}/${REPO_NAME} --reviewer hazelcast/cloud-native
-
-  slack_notify:
-    name: Slack Notify
-    needs: ["publish-release-image", "update_agent_version_in_operator_repo"]
-    if: always() &&  needs.publish-release-image.result != 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: 8398a7/action-slack@f3635935f58910a6d6951b73efe9037c960c8c04
-        with:
-          fields: repo,commit,author,action,eventName,workflow
-          status: failure
-          channel: "#github-actions-log"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

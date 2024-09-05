@@ -92,10 +92,13 @@ jobs:
           token: ${{ env.DEVOPS_GITHUB_TOKEN }}
           ref: ${{ inputs.RELEASE_BRANCH }}
 
-      - name: Convert latest-snapshot to Release Version
+      - name: Update latest-snapshot to Release Version
         run: |
           sed -i "s|ARG version=\"latest-snapshot\"|ARG version=\"${RELEASE_BRANCH}\"|" Dockerfile
           sed -i "s|VERSION ?= latest-snapshot|VERSION ?= ${RELEASE_BRANCH}|" Makefile
+          sed -i "/Version of Hazelcast Platform Operator Agent.*/{n;s/default:.*/default:=\"${RELEASE_BRANCH}\"/;}" ./api/v1alpha1/hazelcast_types.go
+          sed -i "/B&R Agent configurations.*/{n;s/version: \".*\"/version: \"${RELEASE_BRANCH}\"/;}" ./api/v1alpha1/hazelcast_types.go
+          make sync-manifests
 
       - name: Remove 'snapshot' From Chart In Release Branch
         working-directory: helm-charts/hazelcast-platform-operator
@@ -109,7 +112,7 @@ jobs:
           git config user.email "devopshelm@hazelcast.com"
           git config user.name "devOpsHelm"
 
-          git add Makefile Dockerfile config/ helm-charts/hazelcast-platform-operator/
+          git add Makefile Dockerfile config/ helm-charts/hazelcast-platform-operator/ api/
           git commit --signoff -m "${RELEASE_BRANCH}"
           git push origin $RELEASE_BRANCH
 
