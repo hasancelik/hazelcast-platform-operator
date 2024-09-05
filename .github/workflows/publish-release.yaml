@@ -8,7 +8,6 @@ on:
 
 env:
   OPERATOR_NAME: "hazelcast-platform-operator"
-  AGENT_NAME: "platform-operator-agent"
   RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
   PUBLISH_TIMEOUT_IN_MINS: "60"
   GRADE_CHECK_TIMEOUT_IN_MINS: "20"
@@ -20,29 +19,11 @@ jobs:
   publish_docker_image:
     name: Publish Release Image to Docker Hub
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-          - linux/ppc64le
-          - linux/s390x
     outputs:
       RELEASE_VERSION: ${{ steps.set-outputs.outputs.RELEASE_VERSION }}
-      OPERATOR_IMG_NAME: ${{ steps.set-outputs.outputs.OPERATOR_IMG_NAME }}
-      AGENT_IMG_NAME: ${{ steps.set-outputs.outputs.AGENT_IMG_NAME }}
+      IMAGE_NAME: ${{ steps.set-outputs.outputs.IMAGE_NAME }}
       BUNDLE_RELEASE_VERSION: ${{ steps.set-outputs.outputs.BUNDLE_RELEASE_VERSION }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set Up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3.6.1
-        with:
-          install: true
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
@@ -58,20 +39,20 @@ jobs:
             DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
             DEVOPS_GITHUB_TOKEN,CN/DEVOPS_GITHUB_TOKEN
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set Release Version
         id: set-outputs
         run: |
-          OPERATOR_IMG_NAME=docker.io/hazelcast/${OPERATOR_NAME}:${RELEASE_VERSION}
-          AGENT_IMG_NAME=docker.io/hazelcast/${AGENT_NAME}:${RELEASE_VERSION}
+          IMAGE_NAME=docker.io/hazelcast/${OPERATOR_NAME}:${RELEASE_VERSION}
           BUNDLE_RELEASE_VERSION=$( make print-bundle-version VERSION=${RELEASE_VERSION} )
           echo "BUNDLE_RELEASE_VERSION=${BUNDLE_RELEASE_VERSION}" >> $GITHUB_ENV
           echo "BUNDLE_RELEASE_VERSION=${BUNDLE_RELEASE_VERSION}" >> $GITHUB_OUTPUT
           echo "RELEASE_VERSION=${RELEASE_VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "RELEASE_VERSION=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
-          echo "OPERATOR_IMG_NAME=${OPERATOR_IMG_NAME}" >> $GITHUB_ENV
-          echo "OPERATOR_IMG_NAME=${OPERATOR_IMG_NAME}" >> $GITHUB_OUTPUT
-          echo "AGENT_IMG_NAME=${AGENT_IMG_NAME}" >> $GITHUB_ENV
-          echo "AGENT_IMG_NAME=${AGENT_IMG_NAME}" >> $GITHUB_OUTPUT
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_OUTPUT
 
       - name: Get the Current Latest Tag
         id: get-current-latest-tag
@@ -84,17 +65,15 @@ jobs:
             "password": "${{ env.DOCKERHUB_PASSWORD }}"
           }'| jq -r '.token')
 
-          CURRENT_OPERATOR_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/?page_size=100" \
+          CURRENT_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/hazelcast/hazelcast-platform-operator/tags/?page_size=100" \
           -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
           gh api --method PATCH -H "Accept: application/vnd.github+json" \
-           /repos/hazelcast/${OPERATOR_NAME}/environments/prod/variables/CURRENT_OPERATOR_LATEST_TAG \
-             -f "name=CURRENT_OPERATOR_LATEST_TAG" -f "value=$CURRENT_OPERATOR_LATEST_TAG"
-          
-          CURRENT_AGENT_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/?page_size=100" \
-          -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
-          gh api --method PATCH -H "Accept: application/vnd.github+json" \
-           /repos/hazelcast/${AGENT_NAME}/environments/prod/variables/CURRENT_AGENT_LATEST_TAG \
-             -f "name=CURRENT_AGENT_LATEST_TAG" -f "value=CURRENT_AGENT_LATEST_TAG"
+           /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_LATEST_TAG \
+             -f "name=CURRENT_LATEST_TAG" -f "value=$CURRENT_LATEST_TAG"
+
+      - name: Build Operator Image
+        run: |
+          make docker-build-ci IMG=${IMAGE_NAME} VERSION=${RELEASE_VERSION}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -102,32 +81,10 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PASSWORD }}
 
-      - name: Build Operator Image
-        uses: docker/build-push-action@v6.7.0
-        with:
-          context: .
-          builder: ${{ steps.buildx.outputs.name }}
-          build-args: |
-            version=${RELEASE_VERSION}
-            pardotID=dockerhub
-          file: Dockerfile
-          push: true
-          tags: ${{ steps.set-outputs.outputs.OPERATOR_IMG_NAME }},"hazelcast/${OPERATOR_NAME}:latest"
-          platforms: ${{ matrix.platform }}
-          labels: |
-            operator.image.revision=${{github.sha}}
-
-      - name: Build Agent Image
-        uses: docker/build-push-action@v6.4.1
-        with:
-          context: .
-          builder: ${{ steps.buildx.outputs.name }}
-          file: agent/Dockerfile
-          push: true
-          tags: ${{ steps.set-outputs.outputs.AGENT_IMG_NAME }},"hazelcast/${AGENT_NAME}:latest"
-          platforms: ${{ matrix.platform }}
-          labels: |
-            agent.image.revision=${{github.sha}}
+      - name: Push Operator Image
+        id: push-operator-image
+        run: |
+          make docker-push docker-push-latest IMG="${IMAGE_NAME}"
 
   publish_image_to_redhat:
     name: Certify and Publish Container Image to Red Hat
@@ -137,7 +94,7 @@ jobs:
         shell: bash
     runs-on: ubuntu-20.04
     env:
-      OPERATOR_IMG_NAME: ${{ needs.publish_docker_image.outputs.OPERATOR_IMG_NAME }}
+      IMAGE_NAME: ${{ needs.publish_docker_image.outputs.IMAGE_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -171,7 +128,7 @@ jobs:
           echo "Submit test container results to Red Hat"
           podman login -u ${{ env.DOCKERHUB_USERNAME }} -p ${{ env.DOCKERHUB_PASSWORD }} index.docker.io --authfile /home/runner/.docker/config.json
 
-          preflight check container index.$OPERATOR_IMG_NAME \
+          preflight check container index.$IMAGE_NAME \
           --submit \
           --docker-config=/home/runner/.docker/config.json \
           --certification-project-id=${{ env.PREFLIGHT_PROJECT_ID }}
@@ -208,7 +165,7 @@ jobs:
       REPO_OWNER: ${{ matrix.repo-owner }}
       RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.RELEASE_VERSION }}
       BUNDLE_RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.BUNDLE_RELEASE_VERSION }}
-      OPERATOR_IMG_NAME: ${{ needs.publish_docker_image.outputs.OPERATOR_IMG_NAME }}
+      IMAGE_NAME: ${{ needs.publish_docker_image.outputs.IMAGE_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -228,7 +185,7 @@ jobs:
 
       - name: Build Red Hat Bundle
         run: |
-          make bundle IMG=${OPERATOR_IMG_NAME} VERSION=${RELEASE_VERSION} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
+          make bundle IMG=${IMAGE_NAME} VERSION=${RELEASE_VERSION} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
 
       - name: Validate Bundle for OCP
         run: |
@@ -502,7 +459,7 @@ jobs:
             PREFLIGHT_PROJECT_ID,CN/PREFLIGHT_PROJECT_ID
             PFLT_PYXIS_API_TOKEN,CN/PREFLIGHT_RHEL_API_KEY
 
-      - name: Removing Published Docker Images
+      - name: Removing Published Docker Image
         if: always() && !contains(needs.publish_docker_image.result, 'skipped')
         run: |
           auth_token=$(curl --fail -L -s -X POST 'https://hub.docker.com/v2/users/login' \
@@ -512,10 +469,8 @@ jobs:
             "password": "${{ env.DOCKERHUB_PASSWORD }}"
           }'| jq -r '.token')
           
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/hazelcast/hazelcast-platform-operator/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/hazelcast/hazelcast-platform-operator/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
 
       - name: Login to Docker Hub
         if: always() && !contains(needs.publish_docker_image.result, 'skipped')
@@ -528,17 +483,10 @@ jobs:
         if: always() && !contains(needs.publish_docker_image.result, 'skipped')
         run: |
           echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
-          CURRENT_OPERATOR_LATEST_TAG=$(gh api -H "Accept: application/vnd.github+json" \
-          /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_OPERATOR_LATEST_TAG | jq -r '.value')
-          
-          CURRENT_AGENT_LATEST_TAG=$(gh api -H "Accept: application/vnd.github+json" \
-          /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_AGENT_LATEST_TAG | jq -r '.value')
-          
-          docker pull docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_OPERATOR_LATEST_TAG}
-          docker pull docker.io/hazelcast/${AGENT_NAME}:${CURRENT_AGENT_LATEST_TAG}
-          
-          make docker-push-latest IMG="docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_OPERATOR_LATEST_TAG}"
-          make docker-push-agent-latest IMG="docker.io/hazelcast/${AGENT_NAME}:${CURRENT_AGENT_LATEST_TAG}"
+          CURRENT_LATEST_TAG=$(gh api -H "Accept: application/vnd.github+json" \
+          /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_LATEST_TAG | jq -r '.value')
+          docker pull docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_LATEST_TAG}
+          make docker-push-latest IMG="docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_LATEST_TAG}"
 
       - name: Delete Published and Certified Opehshift Image
         if: always() && !contains(needs.publish_image_to_redhat.result, 'skipped')

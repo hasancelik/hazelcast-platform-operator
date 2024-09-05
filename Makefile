@@ -312,9 +312,11 @@ docker-push-latest:
 	docker tag ${IMG} ${IMAGE_TAG_BASE}:latest
 	docker push ${IMAGE_TAG_BASE}:latest
 
-docker-push-agent-latest:
-	docker tag ${IMG} ${AGENT_IMAGE_TAG_BASE}:latest
-	docker push ${AGENT_IMAGE_TAG_BASE}:latest
+agent-docker-build:
+	docker build -f agent/Dockerfile -t ${AGENT_IMG} .
+
+agent-docker-push:
+	docker push ${AGENT_IMG}
 
 sync-manifests: manifests yq
 # Move CRDs into helm template
