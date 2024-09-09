@@ -3,8 +3,6 @@ package managementcenter
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"path"
 	"strings"
@@ -22,11 +20,11 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"software.sslmate.com/src/go-pkcs12"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/platform"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/tls"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/util"
 )
 
@@ -353,19 +351,22 @@ func (r *ManagementCenterReconciler) reconcileSecret(ctx context.Context, mc *ha
 
 	opResult, err := util.CreateOrUpdateForce(ctx, r.Client, secret, func() error {
 		files := make(map[string][]byte)
-		for _, cluster := range mc.Spec.HazelcastClusters {
-			if cluster.TLS != nil {
-				keystore, err := hazelcastKeystore(ctx, r.Client, mc, cluster.TLS.SecretName)
-				if err != nil {
-					return err
-				}
-				files[cluster.Name+".p12"] = keystore
-			}
-			clientConfig, err := hazelcastClientConfig(ctx, r.Client, &cluster)
+		for _, clusterConf := range mc.Spec.HazelcastClusters {
+			clientConfig, err := hazelcastClientConfig(&clusterConf)
 			if err != nil {
 				return err
 			}
-			files[cluster.Name+".yaml"] = clientConfig
+			files[clusterConf.Name+".yaml"] = clientConfig
+
+			if clusterConf.TLS == nil {
+				continue
+			}
+			keystore, truststore, err := tls.HazelcastKeyAndTrustStore(ctx, r.Client, clusterConf.TLS.SecretName, mc.Namespace)
+			if err != nil {
+				return err
+			}
+			files[clusterConf.Name+"-keystore.p12"] = keystore
+			files[clusterConf.Name+"-truststore.p12"] = truststore
 		}
 		secret.Data = files
 		return nil
@@ -588,60 +589,7 @@ func javaOPTS(mc *hazelcastv1alpha1.ManagementCenter) string {
 	return strings.Join(args, " ")
 }
 
-func hazelcastKeystore(ctx context.Context, c client.Client, mc *hazelcastv1alpha1.ManagementCenter, secretName string) ([]byte, error) {
-	password := "hazelcast"
-	var b []byte
-	if secretName != "" {
-		cert, key, err := loadTLSKeyPair(ctx, c, mc, secretName)
-		if err != nil {
-			return nil, err
-		}
-		crt, err := x509.ParseCertificate(cert)
-		if err != nil {
-			return nil, err
-		}
-		pvtKey, err := x509.ParsePKCS8PrivateKey(key)
-		if err != nil {
-			return nil, err
-		}
-		encoder := pkcs12.Modern2023
-		b, err = encoder.Encode(pvtKey, crt, nil, password)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return b, nil
-}
-
-func loadTLSKeyPair(ctx context.Context, c client.Client, mc *hazelcastv1alpha1.ManagementCenter, secretName string) (cert []byte, key []byte, err error) {
-	var s corev1.Secret
-	err = c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: mc.Namespace}, &s)
-	if err != nil {
-		return
-	}
-	cert, err = decodePEM(s.Data["tls.crt"], "CERTIFICATE")
-	if err != nil {
-		return
-	}
-	key, err = decodePEM(s.Data["tls.key"], "PRIVATE KEY")
-	if err != nil {
-		return
-	}
-	return
-}
-
-func decodePEM(data []byte, typ string) ([]byte, error) {
-	b, _ := pem.Decode(data)
-	if b == nil {
-		return nil, fmt.Errorf("expected at least one pem block")
-	}
-	if b.Type != typ {
-		return nil, fmt.Errorf("expected type %v, got %v", typ, b.Type)
-	}
-	return b.Bytes, nil
-}
-
-func hazelcastClientConfig(ctx context.Context, c client.Client, config *hazelcastv1alpha1.HazelcastClusterConfig) ([]byte, error) {
+func hazelcastClientConfig(config *hazelcastv1alpha1.HazelcastClusterConfig) ([]byte, error) {
 	clientConfig := HazelcastClientWrapper{HazelcastClient{
 		ClusterName: config.Name,
 		Network: Network{
@@ -660,7 +608,8 @@ func hazelcastClientConfig(ctx context.Context, c client.Client, config *hazelca
 			Enabled:          true,
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
 			Properties: NewSSLProperties(
-				path.Join("/config", config.Name+".p12"),
+				path.Join("/config", config.Name+"-keystore.p12"),
+				path.Join("/config", config.Name+"-truststore.p12"),
 				config.TLS.MutualAuthentication,
 			),
 		}
@@ -697,7 +646,7 @@ type SSL struct {
 	Properties       map[string]string `yaml:"properties"`
 }
 
-func NewSSLProperties(path string, auth hazelcastv1alpha1.MutualAuthentication) map[string]string {
+func NewSSLProperties(keystorePath, truststorePath string, auth hazelcastv1alpha1.MutualAuthentication) map[string]string {
 	const pass = "hazelcast"
 	const typ = "PKCS12"
 	switch auth {
@@ -705,16 +654,16 @@ func NewSSLProperties(path string, auth hazelcastv1alpha1.MutualAuthentication) 
 		return map[string]string{
 			"keyStoreType":       typ,
 			"protocol":           "TLSv1.2",
-			"keyStore":           path,
+			"keyStore":           keystorePath,
 			"keyStorePassword":   pass,
-			"trustStore":         path,
+			"trustStore":         truststorePath,
 			"trustStorePassword": pass,
 		}
 	default:
 		return map[string]string{
 			"keyStoreType":       typ,
 			"protocol":           "TLSv1.2",
-			"trustStore":         path,
+			"trustStore":         truststorePath,
 			"trustStorePassword": pass,
 		}
 	}

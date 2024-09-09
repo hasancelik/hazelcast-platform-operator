@@ -244,3 +244,9 @@ const (
 const (
 	MaxBackupCount = 6
 )
+
+// TLS Related Constants
+const (
+	KeystoreFileName   = "keystore.p12"
+	TrustStoreFileName = "truststore.p12"
+)

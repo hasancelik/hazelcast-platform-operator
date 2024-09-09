@@ -311,20 +311,21 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 
 	if h.Spec.TLS != nil && h.Spec.TLS.SecretName != "" {
 		var (
-			p12Path  = path.Join(n.HazelcastMountPath, "hazelcast.p12")
-			password = "hazelcast"
+			trustStoreFile = path.Join(n.HazelcastMountPath, n.TrustStoreFileName)
+			keyStoreFile   = path.Join(n.HazelcastMountPath, n.KeystoreFileName)
+			password       = "hazelcast"
 		)
 		// require MTLS for member-member communication
 		cfg.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL = SSL{
 			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
-			Properties:       NewSSLProperties(p12Path, password, "TLS", hazelcastv1alpha1.MutualAuthenticationRequired),
+			Properties:       NewSSLProperties(trustStoreFile, keyStoreFile, password, "TLS", hazelcastv1alpha1.MutualAuthenticationRequired),
 		}
 		// for client-server configuration use only server TLS
 		cfg.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL = SSL{
 			Enabled:          ptr.To(true),
 			FactoryClassName: "com.hazelcast.nio.ssl.BasicSSLContextFactory",
-			Properties:       NewSSLProperties(p12Path, password, "TLS", h.Spec.TLS.MutualAuthentication),
+			Properties:       NewSSLProperties(trustStoreFile, keyStoreFile, password, "TLS", h.Spec.TLS.MutualAuthentication),
 		}
 	}
 
@@ -361,7 +362,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 	return cfg
 }
 
-func NewSSLProperties(path, password, protocol string, auth hazelcastv1alpha1.MutualAuthentication) SSLProperties {
+func NewSSLProperties(trustStorePath, keyStorePath, password, protocol string, auth hazelcastv1alpha1.MutualAuthentication) SSLProperties {
 	const typ = "PKCS12"
 	switch auth {
 	case hazelcastv1alpha1.MutualAuthenticationRequired:
@@ -370,11 +371,11 @@ func NewSSLProperties(path, password, protocol string, auth hazelcastv1alpha1.Mu
 			MutualAuthentication: "REQUIRED",
 			// server cert + key
 			KeyStoreType:     typ,
-			KeyStore:         path,
+			KeyStore:         keyStorePath,
 			KeyStorePassword: password,
 			// trusted cert pool (we use the same file for convince)
 			TrustStoreType:     typ,
-			TrustStore:         path,
+			TrustStore:         trustStorePath,
 			TrustStorePassword: password,
 		}
 	case hazelcastv1alpha1.MutualAuthenticationOptional:
@@ -382,17 +383,17 @@ func NewSSLProperties(path, password, protocol string, auth hazelcastv1alpha1.Mu
 			Protocol:             protocol,
 			MutualAuthentication: "OPTIONAL",
 			KeyStoreType:         typ,
-			KeyStore:             path,
+			KeyStore:             keyStorePath,
 			KeyStorePassword:     password,
 			TrustStoreType:       typ,
-			TrustStore:           path,
+			TrustStore:           trustStorePath,
 			TrustStorePassword:   password,
 		}
 	default:
 		return SSLProperties{
 			Protocol:         protocol,
 			KeyStoreType:     typ,
-			KeyStore:         path,
+			KeyStore:         keyStorePath,
 			KeyStorePassword: password,
 		}
 	}
