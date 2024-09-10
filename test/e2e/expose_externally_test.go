@@ -111,10 +111,7 @@ var _ = Describe("Hazelcast CR with expose externally feature", Group("expose_ex
 			}
 
 			By("checking if the client has connected to all the members")
-			Eventually(func() bool {
-				return clientConnectedToAllMembers(ctx, hzLookupKey)
-			}, Minute, 10*Second).Should(BeTrue())
-
+			clientConnectedToAllMembers(ctx, hzLookupKey)
 			assertExternalAddressesNotEmpty()
 
 			Expect(FillMapByEntryCount(ctx, hzLookupKey, false, "map", 100)).To(BeNil())
@@ -179,9 +176,7 @@ var _ = Describe("Hazelcast CR with expose externally feature", Group("expose_ex
 			}
 
 			By("checking if the client has connected to all the members")
-			Eventually(func() bool {
-				return clientConnectedToAllMembers(ctx, hzLookupKey)
-			}, Minute, 10*Second).Should(BeTrue())
+			clientConnectedToAllMembers(ctx, hzLookupKey)
 
 			assertExternalAddressesNotEmpty()
 
@@ -237,11 +232,26 @@ func filterClientMemberAddressesByPublicIdentifier(member hzCluster.MemberInfo) 
 
 func clientConnectedToAllMembers(ctx context.Context, lk types.NamespacedName) bool {
 	clientHz := GetHzClient(ctx, lk, false)
-	defer Expect(clientHz.Shutdown(ctx)).To(BeNil())
+	defer func() {
+		if err := clientHz.Shutdown(ctx); err != nil {
+			fmt.Printf("Error shutting down Hazelcast client: %v\n", err)
+		}
+	}()
+
 	internalClient := hzClient.NewClientInternal(clientHz)
 	clientMembers := internalClient.OrderedMembers()
 	for _, member := range clientMembers {
-		if !internalClient.ConnectedToMember(member.UUID) {
+		By(fmt.Sprintf("Checking connection to member with UUID: %s at Address: %s", member.UUID, member.Address))
+		success := Eventually(func() bool {
+			connected := internalClient.ConnectedToMember(member.UUID)
+			if connected {
+				By(fmt.Sprintf("Successfully connected to member UUID '%s'", member.UUID))
+			} else {
+				By(fmt.Sprintf("Still not connected to member UUID '%s'", member.UUID))
+			}
+			return connected
+		}, 1*Minute, 10*Second).Should(BeTrue(), fmt.Sprintf("Failed to connect to member UUID '%s'", member.UUID))
+		if !success {
 			return false
 		}
 	}

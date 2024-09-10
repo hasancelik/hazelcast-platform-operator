@@ -557,3 +557,72 @@ assert_operator_pod_not_restarted(){
         return 1
     fi
 }
+
+update_eks_security_group() {
+  local AWS_REGION=$1
+  local CLUSTER_NAME=$2
+
+  local HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | .[]')
+  local JSON_OUTPUT='{
+    "IpPermissions": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 30000,
+        "ToPort": 32767,
+        "IpRanges": ['
+
+  while read -r CIDR; do
+    JSON_OUTPUT+='{"CidrIp": "'$CIDR'"},'
+  done <<< "$HETZNER_IP_RANGES"
+
+  # Remove the last comma and close the JSON structure
+  JSON_OUTPUT=${JSON_OUTPUT%,}
+  JSON_OUTPUT+=']
+      }
+    ]
+  }'
+
+  echo "$JSON_OUTPUT" > /tmp/ip-ranges.json
+  local SECURITY_GROUP_ID=$(aws eks describe-cluster --region="$AWS_REGION" --name="$CLUSTER_NAME" --query="cluster.resourcesVpcConfig.clusterSecurityGroupId" --output=text --no-cli-pager)
+  aws ec2 authorize-security-group-ingress \
+    --region "$AWS_REGION" \
+    --group-id "$SECURITY_GROUP_ID" \
+    --cli-input-json file:///tmp/ip-ranges.json --no-cli-pager
+
+  echo "Ingress rules applied successfully to security group: $SECURITY_GROUP_ID"
+}
+
+update_gke_firewall_rule() {
+  local GCP_PROJECT_ID=$1
+  local FIREWALL_RULE_NAME=$2
+
+  HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | join(",")')
+
+  gcloud compute firewall-rules update $FIREWALL_RULE_NAME \
+    --source-ranges=${HETZNER_IP_RANGES} \
+    --project $GCP_PROJECT_ID
+
+  echo "Firewall rule updated successfully with IP ranges for rule: $FIREWALL_RULE_NAME"
+}
+
+update_aks_nsg_rule() {
+  local NRG_NAME=$1
+  local NSG_NAME=$2
+  local NSG_RULE_NAME=$3
+  HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | join("\",\"")')
+
+  az network nsg rule create \
+    --name=$NSG_RULE_NAME \
+    --nsg-name=${NSG_NAME} \
+    --source-address-prefixes="[\"$HETZNER_IP_RANGES\"]" \
+    --priority=101 \
+    --resource-group=${NRG_NAME} \
+    --access=Allow \
+    --destination-port-ranges=30000-32767 \
+    --direction=Inbound \
+    --description="Allow Ubicloud connection" \
+    --protocol=Tcp
+  echo "NSG rule '$NSG_RULE_NAME' updated successfully in NSG '$NSG_NAME' with source IP ranges."
+}
+
+

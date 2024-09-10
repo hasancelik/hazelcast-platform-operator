@@ -10,7 +10,7 @@ env:
   GAR_PROJECT: hazelcast-33
   GAR_REPO: hazelcast-platform-operator
   AWS_REGION: us-east-1
-  FIREWALL_RULE_NAME: node-port-range
+  FIREWALL_RULE_NAME: node-port-range-ubi
   NAMESPACE: test-operator
   GROUP_NAMESPACE: hazelcast
   CHANNELS: stable-v1.0
@@ -19,12 +19,14 @@ env:
 jobs:
   create-gke-cluster:
     name: Create GKE cluster
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     outputs:
       CLUSTER_NAME: ${{ steps.set-cluster-name.outputs.CLUSTER_NAME }}
     env:
       GCP_NETWORK: operator-test-network
     steps:
+      - uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
@@ -63,12 +65,19 @@ jobs:
           if [ -z "$existing_rule" ]; then
             gcloud compute firewall-rules create ${FIREWALL_RULE_NAME} \
             --allow tcp:30000-32767 \
+            --source-ranges 5.9.0.0/16 \
             --network=${{ env.GCP_NETWORK }}
           fi
 
-          gcloud compute firewall-rules update ${FIREWALL_RULE_NAME} \
-          --source-ranges="192.0.2.0/24" \
-          --project ${{ env.GCP_PROJECT_ID }}
+      - name: Update Firewall Rules
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          retry_on: error
+          command: |
+            source .github/scripts/utils.sh
+            update_gke_firewall_rule ${{ env.GCP_PROJECT_ID }} ${{ env.FIREWALL_RULE_NAME }}
 
       - name: Ensure Service Account allows using Workload Identity
         run: |-
@@ -92,7 +101,7 @@ jobs:
   install-olm:
     needs: [create-gke-cluster]
     name: Install OLM
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     env:
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
     steps:
@@ -144,7 +153,7 @@ jobs:
 
   gke-e2e-tests:
     name: Run e2e test on GKE
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     needs: [create-gke-cluster, grafana-setup, install-olm]
     env:
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
@@ -191,28 +200,6 @@ jobs:
           cluster_name: ${{ env.CLUSTER_NAME }}
           project_id: ${{ env.GCP_PROJECT_ID }}
           location: ${{ env.GKE_ZONE }}
-
-      - name: Get GH Public IP
-        id: ip
-        run: |
-          response=$(curl -s canhazip.com)
-          echo "ipv4=$response" >> "$GITHUB_OUTPUT"
-
-      - name: Update Firewall Rules
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 1
-          max_attempts: 3
-          retry_on: error
-          command: |
-            EXISTING_SOURCES=$(gcloud compute firewall-rules describe ${FIREWALL_RULE_NAME} \
-            --format="get(sourceRanges)" \
-            --project ${{ env.GCP_PROJECT_ID }} |  sed 's/;/,/g')
-            NEW_SOURCE_RANGES="${EXISTING_SOURCES},${{ steps.ip.outputs.ipv4 }}/32"
-
-            gcloud compute firewall-rules update ${FIREWALL_RULE_NAME} \
-            --source-ranges=$NEW_SOURCE_RANGES \
-            --project ${{ env.GCP_PROJECT_ID }}
 
       - name: Create secrets and service accounts
         run: |
@@ -268,7 +255,7 @@ jobs:
 
   delete-cluster:
     name: Delete GKE cluster
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     if: always()
     needs: [create-gke-cluster, gke-e2e-tests, cleanup-namespaces]
     env:
@@ -305,7 +292,7 @@ jobs:
     name: Slack Notify
     needs: ["gke-e2e-tests", "delete-cluster"]
     if: always() && ( needs.gke-e2e-tests.result != 'success' || needs.delete-cluster.result != 'success')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2

@@ -20,7 +20,7 @@ concurrency:
 jobs:
   get-image:
     name: Get Image
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     timeout-minutes: 10
     outputs:
       IMG: ${{ steps.get-image-tag.outputs.IMG }}
@@ -73,7 +73,7 @@ jobs:
 
   kind-e2e-tests:
     name: Run E2E tests
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     needs: get-image
     strategy:
       fail-fast: false

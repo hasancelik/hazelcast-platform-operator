@@ -36,7 +36,7 @@ env:
 jobs:
   decide-run-tests:
     name: Decide to run tests
-    runs-on: ubuntu-22.04
+    runs-on: ubicloud-standard-2
     outputs:
       RUN_TESTS: ${{ steps.should-run-tests.outputs.RUN_TESTS }}
     if: >-

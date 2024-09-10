@@ -13,12 +13,11 @@ env:
 jobs:
   prepare-env:
     name: Create AKS cluster
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     outputs:
       CLUSTER_NAME: ${{ steps.create-cluster.outputs.CLUSTER_NAME }}
-      NRG: ${{ steps.create-cluster.outputs.NRG }}
-      NSG: ${{ steps.create-cluster.outputs.NSG }}
     steps:
+      - uses: actions/checkout@v4
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
@@ -45,30 +44,29 @@ jobs:
           inlineScript: |
             CLUSTER_NAME="operator-e2e-test-aks-${GITHUB_SHA::8}-${{ github.run_number }}"
             echo "CLUSTER_NAME=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
-            NRG=$(az aks create \
+            NRG_NAME=$(az aks create \
               --resource-group=${AZURE_RESOURCE_GROUP} \
               --name="${CLUSTER_NAME}" \
               --node-count=3 \
               --node-vm-size Standard_D4_v2 \
               --enable-node-public-ip \
               --generate-ssh-keys | jq -r .nodeResourceGroup)
-            echo "NodeResourceGroup: ${NRG}"
-            echo "NRG=${NRG}" >> $GITHUB_OUTPUT
+            echo "NodeResourceGroup: ${NRG_NAME}"
+            echo "NRG_NAME=${NRG_NAME}" >> $GITHUB_ENV
 
-            NSG=$(az network nsg list --resource-group=${NRG} --query='[0].name' --output=tsv)
-            echo "NetworkSecurityGroup: ${NSG}"
-            echo "NSG=${NSG}" >> $GITHUB_OUTPUT
+            NSG_NAME=$(az network nsg list --resource-group=${NRG_NAME} --query='[0].name' --output=tsv)
+            echo "NetworkSecurityGroup: ${NSG_NAME}"
+            echo "NSG_NAME=${NSG_NAME}" >> $GITHUB_ENV
 
-            az network nsg rule create \
-              --name=AllowExternalAccess \
-              --nsg-name=${NSG} \
-              --source-address-prefixes="192.0.2.0/24" \
-              --priority=100 \
-              --resource-group=${NRG} \
-              --access=Allow \
-              --destination-port-ranges=30000-32767 \
-              --direction=Inbound \
-              --protocol=Tcp
+      - name: Update Network Security Group
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          retry_on: error
+          command: |
+            source .github/scripts/utils.sh
+            update_aks_nsg_rule "$NRG_NAME" "$NSG_NAME" AllowUbiCloudAccess
 
   grafana-setup:
     needs: [prepare-env]
@@ -84,7 +82,7 @@ jobs:
 
   get-image:
     name: Get Image
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     outputs:
       IMG: ${{ steps.get-image-tag.outputs.IMG }}
     steps:
@@ -137,7 +135,7 @@ jobs:
 
   aks-e2e-tests:
     name: Run e2e test on AKS
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     needs: ["prepare-env", "grafana-setup", "get-image"]
     defaults:
       run:
@@ -183,29 +181,9 @@ jobs:
         with:
           creds: ${{ env.AZURE_CREDENTIALS }}
 
-      - name: Get GH Public IP
-        id: ip
-        run: |
-          response=$(curl -s canhazip.com)
-          echo "ipv4=$response" >> "$GITHUB_OUTPUT"
-
-      - name: Update Network Security Group
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 1
-          max_attempts: 3
-          retry_on: error
-          command: |
-            az network nsg rule update \
-              --name AllowExternalAccess \
-              --nsg-name ${{ needs.prepare-env.outputs.NSG }} \
-              --resource-group ${{ needs.prepare-env.outputs.NRG }} \
-              --add sourceAddressPrefixes ${{ steps.ip.outputs.ipv4 }}/32
-
       - name: Update kubeconfig
         run: |-
-          CLUSTER_NAME="operator-e2e-test-aks-${GITHUB_SHA::8}-${{ github.run_number }}"
-          az aks get-credentials --resource-group "${AZURE_RESOURCE_GROUP}" --name "${CLUSTER_NAME}"
+          az aks get-credentials --resource-group "${AZURE_RESOURCE_GROUP}" --name "${{ needs.prepare-env.outputs.CLUSTER_NAME }}"
 
       - name: Authenticate to GAR
         uses: docker/login-action@v3
@@ -284,7 +262,7 @@ jobs:
 
   delete-cluster:
     name: Delete AKS cluster
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     if: always()
     needs: ["prepare-env", "aks-e2e-tests", "cleanup-namespaces"]
     steps:
@@ -311,14 +289,13 @@ jobs:
         with:
           azcliversion: 2.31.0
           inlineScript: |
-            CLUSTER_NAME="operator-e2e-test-aks-${GITHUB_SHA::8}-${{ github.run_number }}"
-            az aks delete --name "${CLUSTER_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" -y
+            az aks delete --name "${{ needs.prepare-env.outputs.CLUSTER_NAME }}" --resource-group "${AZURE_RESOURCE_GROUP}" -y
 
   slack_notify:
     name: Slack Notify
     needs: ["aks-e2e-tests", "delete-cluster"]
     if: always() && ( needs.aks-e2e-tests.result != 'success' || needs.delete-cluster.result != 'success')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2

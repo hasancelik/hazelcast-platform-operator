@@ -32,7 +32,7 @@ concurrency:
 jobs:
   linter:
     name: Run linters
-    runs-on: ubuntu-24.04
+    runs-on: ubicloud-standard-2
     if: ( !cancelled() && github.event_name == 'pull_request' )
     timeout-minutes: 10
     steps:
@@ -89,7 +89,7 @@ jobs:
 
   agent-unit-tests:
     name: Run agent unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubicloud-standard-2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,7 +103,7 @@ jobs:
 
   unit-tests:
     name: Run unit and integration tests
-    runs-on: ubuntu-24.04
+    runs-on: ubicloud-standard-2
     if: ( !cancelled() && github.event_name == 'pull_request' )
     timeout-minutes: 10
     steps:
@@ -122,7 +122,7 @@ jobs:
 
   check_breaking_changes:
     name: Check breaking changes
-    runs-on: ubuntu-24.04
+    runs-on: ubicloud-standard-2
     if: ( !cancelled() && github.event_name == 'pull_request' )
     steps:
       - name: Checkout
@@ -143,7 +143,7 @@ jobs:
 
   get-image:
     name: Get Image
-    runs-on: ubuntu-24.04
+    runs-on: ubicloud-standard-2
     if: ( !cancelled() && github.event_name == 'pull_request' )
     timeout-minutes: 10
     outputs:
@@ -220,7 +220,7 @@ jobs:
 
   kind-e2e-tests:
     name: Run E2E tests
-    runs-on: ubuntu-24.04
+    runs-on: ubicloud-standard-2
     needs: [get-image]
     strategy:
       fail-fast: false
