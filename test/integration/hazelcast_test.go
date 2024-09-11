@@ -2160,6 +2160,90 @@ var _ = Describe("Hazelcast CR", func() {
 				}, timeout, interval).Should(BeTrue())
 			})
 
+			It("should be configured correctly when MutualAuthentication is configured as Required", func() {
+				tlsSecret := CreateTLSSecret("tls-secret", namespace)
+				assertExists(lookupKey(tlsSecret), tlsSecret)
+				defer DeleteIfExists(lookupKey(tlsSecret), tlsSecret)
+
+				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+				spec.TLS = &hazelcastv1alpha1.TLS{
+					SecretName:           tlsSecret.GetName(),
+					MutualAuthentication: hazelcastv1alpha1.MutualAuthenticationRequired,
+				}
+				hz := &hazelcastv1alpha1.Hazelcast{
+					ObjectMeta: randomObjectMeta(namespace),
+					Spec:       spec,
+				}
+
+				create(hz)
+				assertHzStatusIsPending(hz)
+
+				Eventually(func() bool {
+					configMap := getSecret(hz)
+
+					config := &config.HazelcastWrapper{}
+					if err := yaml.Unmarshal(configMap.Data["hazelcast.yaml"], config); err != nil {
+						return false
+					}
+
+					if enabled := *config.Hazelcast.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL.Enabled; !enabled {
+						return enabled
+					}
+
+					if config.Hazelcast.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL.Properties.MutualAuthentication != "REQUIRED" {
+						return false
+					}
+
+					if enabled := *config.Hazelcast.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL.Enabled; !enabled {
+						return enabled
+					}
+
+					if config.Hazelcast.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL.Properties.MutualAuthentication != "REQUIRED" {
+						return false
+					}
+
+					return true
+				}, timeout, interval).Should(BeTrue())
+			})
+
+			It("should be configured correctly when MutualAuthentication is configured as Optional", func() {
+				tlsSecret := CreateTLSSecret("tls-secret", namespace)
+				assertExists(lookupKey(tlsSecret), tlsSecret)
+				defer DeleteIfExists(lookupKey(tlsSecret), tlsSecret)
+
+				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+				spec.TLS = &hazelcastv1alpha1.TLS{
+					SecretName:           tlsSecret.GetName(),
+					MutualAuthentication: hazelcastv1alpha1.MutualAuthenticationOptional,
+				}
+				hz := &hazelcastv1alpha1.Hazelcast{
+					ObjectMeta: randomObjectMeta(namespace),
+					Spec:       spec,
+				}
+
+				create(hz)
+				assertHzStatusIsPending(hz)
+
+				Eventually(func() config.AdvancedNetwork {
+					configMap := getSecret(hz)
+
+					config := &config.HazelcastWrapper{}
+					if err := yaml.Unmarshal(configMap.Data["hazelcast.yaml"], config); err != nil {
+						Fail("error while unmarshalling config")
+					}
+					return config.Hazelcast.AdvancedNetwork
+				}, timeout, interval).Should(And(
+					WithTransform(func(an config.AdvancedNetwork) bool { return *an.ClientServerSocketEndpointConfig.SSL.Enabled }, BeTrue()),
+					WithTransform(func(an config.AdvancedNetwork) bool { return *an.MemberServerSocketEndpointConfig.SSL.Enabled }, BeTrue()),
+					WithTransform(func(an config.AdvancedNetwork) string {
+						return an.ClientServerSocketEndpointConfig.SSL.Properties.MutualAuthentication
+					}, Equal("OPTIONAL")),
+					WithTransform(func(an config.AdvancedNetwork) string {
+						return an.MemberServerSocketEndpointConfig.SSL.Properties.MutualAuthentication
+					}, Equal("REQUIRED")),
+				))
+			})
+
 			It("should error when secretName is empty", func() {
 				spec := test.HazelcastSpec(defaultHazelcastSpecValues())
 				spec.TLS = &hazelcastv1alpha1.TLS{

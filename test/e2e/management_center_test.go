@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 
+	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
+
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	mcconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/managementcenter"
 )
@@ -133,5 +135,73 @@ var _ = Describe("Management-Center", Group("mc"), func() {
 			Expect(err).To(BeNil())
 			Expect(resp.StatusCode).To(Equal(200))
 		})
+	})
+
+	Context("TLS Configuration", func() {
+		DescribeTable("should create MC resources with TLS configuration enabled", func(useCertChain bool) {
+			setLabelAndCRName("mc-5")
+
+			mc := mcconfig.TLSEnabled(mcLookupKey, labels, false)
+
+			tlsSecretNn := types.NamespacedName{
+				Name:      mc.Spec.HazelcastClusters[0].TLS.SecretName,
+				Namespace: mc.Namespace,
+			}
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
+			By("creating TLS secret", func() {
+				Eventually(func() error {
+					return k8sClient.Create(context.Background(), secret)
+				}, Minute, interval).Should(Succeed())
+				assertExists(tlsSecretNn, &corev1.Secret{})
+			})
+
+			create(mc)
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+
+		DescribeTable("should create MC resources when mutual TLS authentication configured as required", func(useCertChain bool) {
+			setLabelAndCRName("mc-6")
+
+			mc := mcconfig.TLSEnabled(mcLookupKey, labels, false)
+
+			tlsSecretNn := types.NamespacedName{
+				Name:      mc.Spec.HazelcastClusters[0].TLS.SecretName,
+				Namespace: mc.Namespace,
+			}
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
+			By("creating TLS secret", func() {
+				Eventually(func() error {
+					return k8sClient.Create(context.Background(), secret)
+				}, Minute, interval).Should(Succeed())
+				assertExists(tlsSecretNn, &corev1.Secret{})
+			})
+
+			create(mc)
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+
+		DescribeTable("should create MC resources when mutual TLS authentication configured as optional", func(useCertChain bool) {
+			setLabelAndCRName("mc-6")
+
+			mc := mcconfig.TLSEnabled(mcLookupKey, labels, true)
+
+			tlsSecretNn := types.NamespacedName{
+				Name:      mc.Spec.HazelcastClusters[0].TLS.SecretName,
+				Namespace: mc.Namespace,
+			}
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
+			By("creating TLS secret", func() {
+				Eventually(func() error {
+					return k8sClient.Create(context.Background(), secret)
+				}, Minute, interval).Should(Succeed())
+				assertExists(tlsSecretNn, &corev1.Secret{})
+			})
+
+			create(mc)
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
 	})
 })

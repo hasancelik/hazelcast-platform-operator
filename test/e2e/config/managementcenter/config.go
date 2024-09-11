@@ -115,4 +115,23 @@ var (
 			},
 		}
 	}
+
+	TLSEnabled = func(lk types.NamespacedName, lbls map[string]string, isOptional bool) *hazelcastcomv1alpha1.ManagementCenter {
+		ma := hazelcastcomv1alpha1.MutualAuthenticationRequired
+		if isOptional {
+			ma = hazelcastcomv1alpha1.MutualAuthenticationOptional
+		}
+		mc := Default(lk, lbls)
+		mc.Spec.HazelcastClusters = []hazelcastcomv1alpha1.HazelcastClusterConfig{
+			{
+				Name:    "dev",
+				Address: "hazelcast",
+				TLS: &hazelcastcomv1alpha1.TLS{
+					SecretName:           lk.Name + "-mtls",
+					MutualAuthentication: ma,
+				},
+			},
+		}
+		return mc
+	}
 )

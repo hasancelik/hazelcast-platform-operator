@@ -158,7 +158,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 	})
 
 	Context("TLS Configuration", func() {
-		It("should form a cluster with TLS configuration enabled", Tag(Kind|AnyCloud), func() {
+		DescribeTable("should form a cluster with TLS configuration enabled", func(useCertChain bool) {
 			setLabelAndCRName("h-7")
 			hz := hazelcastconfig.HazelcastTLS(hzLookupKey, labels)
 
@@ -166,7 +166,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 				Name:      hz.Spec.TLS.SecretName,
 				Namespace: hz.Namespace,
 			}
-			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{})
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
 			By("creating TLS secret", func() {
 				Eventually(func() error {
 					return k8sClient.Create(context.Background(), secret)
@@ -176,17 +176,19 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 
 			CreateHazelcastCR(hz)
 			evaluateReadyMembers(hzLookupKey)
-		})
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
 
-		It("should support mutual TLS authentication in Hazelcast cluster", Tag(Kind|AnyCloud), func() {
+		DescribeTable("should support mutual TLS authentication in Hazelcast cluster", func(useCertChain bool) {
 			setLabelAndCRName("h-8")
-			hz := hazelcastconfig.HazelcastMTLS(hzLookupKey, labels)
+			hz := hazelcastconfig.HazelcastMTLS(hzLookupKey, labels, false)
 
 			tlsSecretNn := types.NamespacedName{
 				Name:      hz.Spec.TLS.SecretName,
 				Namespace: hz.Namespace,
 			}
-			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{})
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
 			By("creating TLS secret", func() {
 				Eventually(func() error {
 					return k8sClient.Create(context.Background(), secret)
@@ -196,7 +198,31 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 
 			CreateHazelcastCR(hz)
 			evaluateReadyMembers(hzLookupKey)
-		})
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+
+		DescribeTable("should form a cluster when mutual TLS authentication configured as optional", func(useCertChain bool) {
+			setLabelAndCRName("h-8")
+			hz := hazelcastconfig.HazelcastMTLS(hzLookupKey, labels, true)
+
+			tlsSecretNn := types.NamespacedName{
+				Name:      hz.Spec.TLS.SecretName,
+				Namespace: hz.Namespace,
+			}
+			secret := hazelcastconfig.TLSSecret(tlsSecretNn, map[string]string{}, useCertChain)
+			By("creating TLS secret", func() {
+				Eventually(func() error {
+					return k8sClient.Create(context.Background(), secret)
+				}, Minute, interval).Should(Succeed())
+				assertExists(tlsSecretNn, &corev1.Secret{})
+			})
+
+			CreateHazelcastCR(hz)
+			evaluateReadyMembers(hzLookupKey)
+		},
+			Entry("using single certificate", Tag(Kind|AnyCloud), false),
+			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
 	})
 
 	Context("Custom Config", func() {
