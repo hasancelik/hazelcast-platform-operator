@@ -17,8 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Operator Image
-        run: make docker-build IMG="hazelcast/hazelcast-platform-operator:latest-snapshot" VERSION="latest-snapshot"
+      - name: Docker Setup QEMU
+        uses: docker/setup-qemu-action@v3.2.0
+
+      - name: Set Up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3.6.1
+        with:
+          install: true
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -41,8 +47,20 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PASSWORD }}
 
-      - name: Push Operator Image
-        run: make docker-push IMG="hazelcast/hazelcast-platform-operator:latest-snapshot"
+      - name: Build Operator Image
+        uses: docker/build-push-action@v6.7.0
+        with:
+          context: .
+          builder: ${{ steps.buildx.outputs.name }}
+          build-args: |
+            version=${RELEASE_VERSION}
+            pardotID=dockerhub
+          file: Dockerfile
+          push: true
+          tags: hazelcast/hazelcast-platform-operator:latest-snapshot
+          platforms: linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+          labels: |
+            operator.image.revision=${{github.sha}}
 
       - name: Generate API Reference Docs
         run: |

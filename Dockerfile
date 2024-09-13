@@ -1,6 +1,9 @@
 # Build the manager binary
 FROM golang:1.22.5 AS builder
 
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -14,9 +17,8 @@ COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
 COPY agent/ agent/
-
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -tags hazelcastinternal -a -o manager cmd/main.go
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -tags hazelcastinternal -a -o manager cmd/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 

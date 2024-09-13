@@ -108,6 +108,10 @@ const (
 	HazelcastEERepo = "docker.io/hazelcast/hazelcast-enterprise"
 	// HazelcastVersion version of Hazelcast image
 	HazelcastVersion = "5.5.1-SNAPSHOT"
+	// AgentRepo image repository for Agent
+	AgentRepo = "docker.io/hazelcast/platform-operator-agent"
+	// AgentVersion version of Agent image
+	AgentVersion = "latest-snapshot"
 	// HazelcastImagePullPolicy pull policy for Hazelcast Platform image
 	HazelcastImagePullPolicy = corev1.PullIfNotPresent
 )

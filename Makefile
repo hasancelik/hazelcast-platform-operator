@@ -256,7 +256,7 @@ E2E_TEST_LABELS:=$(E2E_TEST_LABELS) && !cluster_scope
 endif
 
 test-e2e-split-kind: generate ginkgo ## Run end-to-end tests on Kind
-	$(GINKGO) -r --compilers=2 --output-interceptor-mode=none --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_KIND_PARALLEL_PROCESSES) --flake-attempts 2 --trace --label-filter="(kind && shard$(SHARD_ID)) && $(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS) -storage-class "$(STORAGE_CLASS)"
+	$(GINKGO) -r --compilers=2 --output-interceptor-mode=none --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_KIND_PARALLEL_PROCESSES) --flake-attempts 2 --trace --label-filter="(kind && shard$(SHARD_ID)) && $(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -agent-repo "$(AGENT_REPO)" -agent-version "$(AGENT_VERSION)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS) -storage-class "$(STORAGE_CLASS)"
 
 test-e2e: generate ginkgo ## Run end-to-end tests
 	$(GINKGO) -r --keep-going --output-interceptor-mode=none --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_PARALLEL_PROCESSES) --trace --label-filter="$(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 120m --flake-attempts 2 $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -deployNamespace "$(WATCHED_NAMESPACES)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -storage-class "$(STORAGE_CLASS)"
@@ -294,15 +294,25 @@ docker-build-ci: ## Build docker image with the manager without running tests.
 # - be able to push the image for your registry (i.e. if you do not inform a valid value via IMG=<myregistry/image:<tag>> than the export will fail)
 # To properly provided solutions that supports more than one platform you should use this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+DOCKERFILE_PATH ?= Dockerfile
+DOCKERFILE_CROSS = $(basename $(DOCKERFILE_PATH)).cross
+TAGS = $(foreach tag,$(shell echo $(TAG_LIST) | tr ',' ' '),--tag=$(tag))
 .PHONY: docker-buildx
 docker-buildx: ## Build and push docker image for the manager for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v3-builder
-	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- docker buildx rm project-v3-builder
-	rm Dockerfile.cross
+	# Copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into both FROM statements
+	sed -e 's/^FROM /FROM --platform=\$$\{BUILDPLATFORM\} /' $(DOCKERFILE_PATH) > $(DOCKERFILE_CROSS)
+	- docker buildx create --name operator-builder --use
+	docker buildx build \
+		--builder operator-builder \
+		--platform $(PLATFORMS) \
+		--build-arg version=${VERSION} \
+		--build-arg pardotID=${PARDOT_ID} \
+		--file $(DOCKERFILE_CROSS) \
+		$(TAGS) \
+		--push .
+
+	- docker buildx rm operator-builder
+	rm $(DOCKERFILE_CROSS)
 
 ##@ Deployment
 docker-push: ## Push docker image with the manager.

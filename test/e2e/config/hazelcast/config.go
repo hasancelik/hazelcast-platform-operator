@@ -16,6 +16,8 @@ import (
 var (
 	hazelcastVersion = flag.String("hazelcast-version", naming.HazelcastVersion, "Default Hazelcast version used in e2e tests")
 	hazelcastEERepo  = flag.String("hazelcast-ee-repo", naming.HazelcastEERepo, "Enterprise Hazelcast repository used in e2e tests")
+	agentRepo        = flag.String("agent-repo", naming.AgentRepo, "Agent repository used in e2e tests")
+	agentVersion     = flag.String("agent-version", naming.AgentVersion, "Agent version used in e2e tests")
 	StorageClass     = flag.String("storage-class", "", "Storage class name to be used with different cloud providers")
 )
 
@@ -28,6 +30,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				ClusterName:          "development",
 				Repository:           *hazelcastEERepo,
@@ -46,6 +52,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -63,6 +73,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -85,6 +99,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -107,6 +125,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -129,6 +151,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -150,6 +176,10 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(clusterSize),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -169,6 +199,10 @@ var (
 
 	CPSubsystem = func(clusterSize int32) hazelcastcomv1alpha1.HazelcastSpec {
 		return hazelcastcomv1alpha1.HazelcastSpec{
+			Agent: hazelcastcomv1alpha1.AgentConfiguration{
+				Repository: *agentRepo,
+				Version:    *agentVersion,
+			},
 			ClusterSize:          ptr.To(clusterSize),
 			Repository:           *hazelcastEERepo,
 			LicenseKeySecretName: naming.LicenseKeySecret,
@@ -186,6 +220,10 @@ var (
 
 	CPSubsystemPersistence = func(clusterSize int32) hazelcastcomv1alpha1.HazelcastSpec {
 		return hazelcastcomv1alpha1.HazelcastSpec{
+			Agent: hazelcastcomv1alpha1.AgentConfiguration{
+				Repository: *agentRepo,
+				Version:    *agentVersion,
+			},
 			ClusterSize:          ptr.To(clusterSize),
 			Version:              naming.HazelcastVersion,
 			Repository:           *hazelcastEERepo,
@@ -223,6 +261,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{1}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -248,6 +290,10 @@ var (
 			},
 
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -268,6 +314,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -294,6 +344,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -317,6 +371,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -356,6 +414,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(1)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -392,6 +454,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{1}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -413,6 +479,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				LoggingLevel:              hazelcastcomv1alpha1.LoggingLevelDebug,
 				ClusterSize:               &[]int32{1}[0],
 				Repository:                *hazelcastEERepo,
@@ -433,6 +503,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &size,
 				HighAvailabilityMode: mode,
 				Repository:           *hazelcastEERepo,
@@ -455,6 +529,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -478,6 +556,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -498,6 +580,10 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(clusterSize),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,
@@ -572,6 +658,10 @@ var (
 				Labels:    lbls,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          &[]int32{3}[0],
 				Repository:           *hazelcastEERepo,
 				LicenseKeySecretName: naming.LicenseKeySecret,
@@ -943,6 +1033,10 @@ var (
 				Labels:    labels,
 			},
 			Spec: hazelcastcomv1alpha1.HazelcastSpec{
+				Agent: hazelcastcomv1alpha1.AgentConfiguration{
+					Repository: *agentRepo,
+					Version:    *agentVersion,
+				},
 				ClusterSize:          ptr.To(int32(3)),
 				Repository:           *hazelcastEERepo,
 				Version:              *hazelcastVersion,

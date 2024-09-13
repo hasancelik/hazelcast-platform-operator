@@ -1,5 +1,8 @@
 FROM golang:1.22.5 AS builder
 
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /app
 
 COPY go.mod ./
@@ -9,8 +12,8 @@ RUN go mod download
 COPY /. ./
 
 RUN ls -la /app
-
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o platform-operator-agent agent/main.go
+ARG GOARCH
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -v -o platform-operator-agent agent/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
