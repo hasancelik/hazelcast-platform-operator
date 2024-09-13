@@ -6,19 +6,23 @@ import (
 	"strconv"
 	. "time"
 
-	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
-	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+	proto "github.com/hazelcast/hazelcast-go-client"
 	"k8s.io/utils/ptr"
 
-	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
+	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
+	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+
+	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 )
 
 var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
-	localPort := strconv.Itoa(9000 + GinkgoParallelProcess())
+	localPortSrc := strconv.Itoa(9000 + GinkgoParallelProcess())
+	localPortTrg := strconv.Itoa(9100 + GinkgoParallelProcess())
 
 	AfterEach(func() {
 		GinkgoWriter.Printf("Aftereach start time is %v\n", Now().String())
@@ -48,8 +52,8 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			By("checking the size of the maps in the target cluster")
 			mapSize := 1024
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, mapLookupKey.Name, mapSize)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPort, mapLookupKey.Name, mapSize, 1*Minute)
+			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPortSrc, mapLookupKey.Name, mapSize)
+			waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPortTrg, mapLookupKey.Name, mapSize, 1*Minute)
 		})
 
 		It("maintains replication after source members restart", Tag(AnyCloud), func() {
@@ -73,8 +77,8 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			By("checking the size of the maps in the target cluster")
 			mapSize := 1024
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, mapLookupKey.Name, mapSize)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPort, mapLookupKey.Name, mapSize, 1*Minute)
+			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPortSrc, mapLookupKey.Name, mapSize)
+			waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPortTrg, mapLookupKey.Name, mapSize, 1*Minute)
 		})
 	})
 
@@ -219,7 +223,7 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			By("checking the size of the maps in the target cluster")
 			mapSize := 1024
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, mapLookupKey.Name, mapSize)
+			fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPortSrc, mapLookupKey.Name, mapSize)
 
 			By("checking the wan member status")
 			Sleep(Second * 10)
@@ -316,16 +320,22 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			By("filling the maps in the source clusters")
 			entryCount := 10
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map11, entryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map12, entryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPort, map21, entryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPort, map22, entryCount)
+			portForwardingDo(hzCrs[hzSource1], localPortSrc, func(cl *proto.Client) {
+				fillMapData(context.TODO(), cl, map11, entryCount)
+				fillMapData(context.TODO(), cl, map12, entryCount)
+			})
+			portForwardingDo(hzCrs[hzSource2], localPortSrc, func(cl *proto.Client) {
+				fillMapData(context.TODO(), cl, map21, entryCount)
+				fillMapData(context.TODO(), cl, map22, entryCount)
+			})
 
 			By("checking the size of the maps in the target cluster")
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map11, entryCount, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map12, entryCount, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map21, entryCount, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map22, entryCount, 1*Minute)
+			portForwardingDo(hzCrs[hzTarget1], localPortTrg, func(cl *proto.Client) {
+				waitForMapSize(context.TODO(), cl, map11, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map12, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map21, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map22, entryCount, 1*Minute)
+			})
 
 			By("stopping replicating all maps but map22")
 
@@ -339,16 +349,22 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			currentSize := entryCount
 			newEntryCount := 50
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPort, map22, newEntryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map11, newEntryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map12, newEntryCount)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPort, map21, newEntryCount)
+			portForwardingDo(hzCrs[hzSource1], localPortSrc, func(cl *proto.Client) {
+				fillMapData(context.TODO(), cl, map11, newEntryCount)
+				fillMapData(context.TODO(), cl, map12, newEntryCount)
+			})
+			portForwardingDo(hzCrs[hzSource2], localPortSrc, func(cl *proto.Client) {
+				fillMapData(context.TODO(), cl, map21, newEntryCount)
+				fillMapData(context.TODO(), cl, map22, newEntryCount)
+			})
 
 			By("checking the size of the maps in the target cluster")
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map22, currentSize+newEntryCount, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map11, currentSize, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map12, currentSize, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map21, currentSize, 1*Minute)
+			portForwardingDo(hzCrs[hzTarget1], localPortTrg, func(cl *proto.Client) {
+				waitForMapSize(context.TODO(), cl, map11, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map12, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map21, entryCount, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map22, currentSize+newEntryCount, 1*Minute)
+			})
 		})
 
 		It("continues replication when 1 of 2 maps references is deleted from WAN spec", Tag(Kind|AnyCloud), func() {
@@ -438,8 +454,8 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 			mapSize := 1024
 
 			By("checking the size of the map created before the wan")
-			fillTheMapDataPortForward(context.Background(), hzSourceCr, localPort, mapBeforeWan, mapSize)
-			waitForMapSizePortForward(context.Background(), hzTargetCr, localPort, mapBeforeWan, mapSize, Minute)
+			fillTheMapDataPortForward(context.Background(), hzSourceCr, localPortSrc, mapBeforeWan, mapSize)
+			waitForMapSizePortForward(context.Background(), hzTargetCr, localPortSrc, mapBeforeWan, mapSize, Minute)
 
 			// Creating the map after the WanReplication CR
 			mapAfterWanCr := hazelcastconfig.DefaultMap(types.NamespacedName{Name: mapAfterWan, Namespace: mapLookupKey.Namespace}, hzSource, labels)
@@ -449,8 +465,8 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 			assertWanStatusMapCount(wan, 2)
 
 			By("checking the size of the map created after the wan")
-			fillTheMapDataPortForward(context.Background(), hzSourceCr, localPort, mapAfterWan, mapSize)
-			waitForMapSizePortForward(context.Background(), hzTargetCr, localPort, mapAfterWan, mapSize, Minute)
+			fillTheMapDataPortForward(context.Background(), hzSourceCr, localPortSrc, mapAfterWan, mapSize)
+			waitForMapSizePortForward(context.Background(), hzTargetCr, localPortSrc, mapAfterWan, mapSize, Minute)
 		})
 
 		It("handles different map names for target cluster replication", Tag(AnyCloud), func() {
@@ -490,14 +506,18 @@ var _ = Describe("Hazelcast WAN", Group("hz_wan"), func() {
 
 			By("filling the maps in the source clusters")
 			mapSize := 10
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map11, mapSize)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource1], localPort, map12MapName, mapSize)
-			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPort, map21, mapSize)
+			portForwardingDo(hzCrs[hzSource1], localPortSrc, func(cl *proto.Client) {
+				fillMapData(context.TODO(), cl, map11, mapSize)
+				fillMapData(context.TODO(), cl, map12MapName, mapSize)
+			})
+			fillTheMapDataPortForward(context.Background(), hzCrs[hzSource2], localPortSrc, map21, mapSize)
 
 			By("checking the size of the maps in the target cluster")
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map11, mapSize, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map12MapName, mapSize, 1*Minute)
-			waitForMapSizePortForward(context.Background(), hzCrs[hzTarget1], localPort, map21, mapSize, 1*Minute)
+			portForwardingDo(hzCrs[hzTarget1], localPortTrg, func(cl *proto.Client) {
+				waitForMapSize(context.TODO(), cl, map11, mapSize, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map12MapName, mapSize, 1*Minute)
+				waitForMapSize(context.TODO(), cl, map21, mapSize, 1*Minute)
+			})
 		})
 	})
 

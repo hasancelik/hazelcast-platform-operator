@@ -5,13 +5,15 @@ import (
 	"strconv"
 	. "time"
 
+	hzClient "github.com/hazelcast/hazelcast-go-client"
 	. "github.com/onsi/ginkgo/v2"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 )
 
 var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
-	localPort := strconv.Itoa(9200 + GinkgoParallelProcess())
+	localPortSrc := strconv.Itoa(9300 + GinkgoParallelProcess())
+	localPortTrg := strconv.Itoa(9400 + GinkgoParallelProcess())
 
 	AfterEach(func() {
 		GinkgoWriter.Printf("Aftereach start time is %v\n", Now().String())
@@ -47,7 +49,7 @@ var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
 		}, hzSrcLookupKey.Namespace, labels, mFns...)
 
 		mapSize := 1024
-		fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, mapLookupKey.Name, mapSize)
+		fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPortSrc, mapLookupKey.Name, mapSize)
 
 		By("creating WAN configuration")
 		wr := createWanConfig(context.Background(), wanLookupKey, hzCrs[hzTrgLookupKey.Name],
@@ -57,7 +59,7 @@ var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
 		createWanSync(context.Background(), wanLookupKey, wr.Name, 1, labels)
 
 		By("checking the size of the maps in the target cluster")
-		waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPort, mapLookupKey.Name, mapSize, 1*Minute)
+		waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPortTrg, mapLookupKey.Name, mapSize, 1*Minute)
 	},
 		Entry("using Full WAN Sync", Tag(AnyCloud), false),
 		Entry("using Delta WAN Sync", Tag(AnyCloud), true),
@@ -70,6 +72,7 @@ var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
 		srcMap1 := "map1-" + suffix
 		srcMap2 := "map2-" + suffix
 
+		ctx := context.Background()
 		mFns, wrFns := mtFns(isDelta)
 		hzCrs, _ := createWanResources(context.Background(), map[string][]string{
 			hzSrcLookupKey.Name: {srcMap1, srcMap2},
@@ -77,8 +80,10 @@ var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
 		}, hzSrcLookupKey.Namespace, labels, mFns...)
 
 		mapSize := 1024
-		fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, srcMap1, mapSize)
-		fillTheMapDataPortForward(context.Background(), hzCrs[hzSrcLookupKey.Name], localPort, srcMap2, mapSize)
+		portForwardingDo(hzCrs[hzSrcLookupKey.Name], localPortSrc, func(cl *hzClient.Client) {
+			fillMapData(ctx, cl, srcMap1, mapSize)
+			fillMapData(ctx, cl, srcMap2, mapSize)
+		})
 
 		By("creating WAN configuration")
 		wr := createWanConfig(context.Background(), wanLookupKey, hzCrs[hzTrgLookupKey.Name],
@@ -89,8 +94,10 @@ var _ = Context("Hazelcast WAN Sync", Group("wan_sync"), func() {
 		createWanSync(context.Background(), wanLookupKey, wr.Name, 2, labels)
 
 		By("checking the size of the maps in the target cluster")
-		waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPort, srcMap1, mapSize, 1*Minute)
-		waitForMapSizePortForward(context.Background(), hzCrs[hzTrgLookupKey.Name], localPort, srcMap2, mapSize, 1*Minute)
+		portForwardingDo(hzCrs[hzTrgLookupKey.Name], localPortTrg, func(cl *hzClient.Client) {
+			waitForMapSize(ctx, cl, srcMap1, mapSize, 1*Minute)
+			waitForMapSize(ctx, cl, srcMap2, mapSize, 1*Minute)
+		})
 	},
 		Entry("using Full WAN Sync", Tag(AnyCloud), false),
 		Entry("using Delta WAN Sync", Tag(AnyCloud), true),

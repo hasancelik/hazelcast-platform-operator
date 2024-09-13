@@ -16,6 +16,18 @@ import (
 	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 )
 
+func portForwardingDo(hz *hazelcastcomv1alpha1.Hazelcast, localPort string, action func(cl *hzClient.Client)) {
+	ctx := context.Background()
+	stopChan := portForwardPod(hz.Name+"-0", hz.Namespace, localPort+":5701")
+	defer closeChannel(stopChan)
+	cl := newHazelcastClientPortForward(ctx, hz, localPort)
+	defer func() {
+		err := cl.Shutdown(ctx)
+		Expect(err).To(BeNil())
+	}()
+	action(cl)
+}
+
 func fillTheMapDataPortForward(ctx context.Context, hz *hazelcastcomv1alpha1.Hazelcast, localPort, mapName string, entryCount int) {
 	By(fmt.Sprintf("filling the '%s' map with '%d' entries using '%s' lookup name and '%s' namespace", mapName, entryCount, hz.Name, hz.Namespace), func() {
 		stopChan := portForwardPod(hz.Name+"-0", hz.Namespace, localPort+":5701")
@@ -27,20 +39,24 @@ func fillTheMapDataPortForward(ctx context.Context, hz *hazelcastcomv1alpha1.Haz
 			Expect(err).To(BeNil())
 		}()
 
-		m, err := cl.GetMap(ctx, mapName)
-		Expect(err).ToNot(HaveOccurred())
-		initMapSize, err := m.Size(ctx)
-		Expect(err).ToNot(HaveOccurred())
-		entries := make([]hzclienttypes.Entry, 0, entryCount)
-		for i := initMapSize; i < initMapSize+entryCount; i++ {
-			entries = append(entries, hzclienttypes.NewEntry(strconv.Itoa(i), strconv.Itoa(i)))
-		}
-		err = m.PutAll(ctx, entries...)
-		Expect(err).ToNot(HaveOccurred())
-		mapSize, err := m.Size(ctx)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(mapSize).To(Equal(initMapSize + entryCount))
+		fillMapData(ctx, cl, mapName, entryCount)
 	})
+}
+
+func fillMapData(ctx context.Context, cl *hzClient.Client, mapName string, entryCount int) {
+	m, err := cl.GetMap(ctx, mapName)
+	Expect(err).ToNot(HaveOccurred())
+	initMapSize, err := m.Size(ctx)
+	Expect(err).ToNot(HaveOccurred())
+	entries := make([]hzclienttypes.Entry, 0, entryCount)
+	for i := initMapSize; i < initMapSize+entryCount; i++ {
+		entries = append(entries, hzclienttypes.NewEntry(strconv.Itoa(i), strconv.Itoa(i)))
+	}
+	err = m.PutAll(ctx, entries...)
+	Expect(err).ToNot(HaveOccurred())
+	mapSize, err := m.Size(ctx)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(mapSize).To(Equal(initMapSize + entryCount))
 }
 
 func waitForMapSizePortForward(ctx context.Context, hz *hazelcastcomv1alpha1.Hazelcast, localPort, mapName string, mapSize int, timeout Duration) {
@@ -54,18 +70,22 @@ func waitForMapSizePortForward(ctx context.Context, hz *hazelcastcomv1alpha1.Haz
 			Expect(err).To(BeNil())
 		}()
 
-		if timeout == 0 {
-			timeout = 10 * Minute
-		}
-
-		Eventually(func() (int, error) {
-			hzMap, err := cl.GetMap(ctx, mapName)
-			if err != nil {
-				return -1, err
-			}
-			return hzMap.Size(ctx)
-		}, timeout, 10*Second).Should(Equal(mapSize))
+		waitForMapSize(ctx, cl, mapName, mapSize, timeout)
 	})
+}
+
+func waitForMapSize(ctx context.Context, cl *hzClient.Client, mapName string, mapSize int, timeout Duration) {
+	if timeout == 0 {
+		timeout = 10 * Minute
+	}
+
+	Eventually(func() (int, error) {
+		hzMap, err := cl.GetMap(ctx, mapName)
+		if err != nil {
+			return -1, err
+		}
+		return hzMap.Size(ctx)
+	}, timeout, 10*Second).Should(Equal(mapSize))
 }
 
 func memberConfigPortForward(ctx context.Context, hz *hazelcastcomv1alpha1.Hazelcast, localPort string) string {

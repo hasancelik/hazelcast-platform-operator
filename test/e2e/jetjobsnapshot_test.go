@@ -6,17 +6,18 @@ import (
 	"strconv"
 	. "time"
 
-	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
-	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+
+	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	hazelcastconfig "github.com/hazelcast/hazelcast-platform-operator/test/e2e/config/hazelcast"
 )
 
 var _ = Describe("Hazelcast JetJobSnapshot", Group("jetjobsnapshot"), func() {
-	localPort := strconv.Itoa(9100 + GinkgoParallelProcess())
+	localPort := strconv.Itoa(9200 + GinkgoParallelProcess())
 	jarName := "snapshot-test.jar"
 
 	AfterEach(func() {
