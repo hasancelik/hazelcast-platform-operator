@@ -107,7 +107,7 @@ const (
 	// HazelcastEERepo image repository for Hazelcast EE
 	HazelcastEERepo = "docker.io/hazelcast/hazelcast-enterprise"
 	// HazelcastVersion version of Hazelcast image
-	HazelcastVersion = "5.5.1-SNAPSHOT"
+	HazelcastVersion = "5.5.2-SNAPSHOT"
 	// AgentRepo image repository for Agent
 	AgentRepo = "docker.io/hazelcast/platform-operator-agent"
 	// AgentVersion version of Agent image
