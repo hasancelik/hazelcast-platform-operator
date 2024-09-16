@@ -217,7 +217,6 @@ jobs:
           labels: |
             agent.image.revision=${{ github.event.pull_request.head.sha }}
 
-
   kind-e2e-tests:
     name: Run E2E tests
     runs-on: ubicloud-standard-2

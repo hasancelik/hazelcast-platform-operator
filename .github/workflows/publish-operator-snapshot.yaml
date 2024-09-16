@@ -53,7 +53,7 @@ jobs:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
-            version=${RELEASE_VERSION}
+            version=latest-snapshot
             pardotID=dockerhub
           file: Dockerfile
           push: true
