@@ -172,7 +172,7 @@ spec:
   - email: cloudnative@hazelcast.com
     name: Hazelcast Cloud Native Team
   maturity: alpha
-  minKubeVersion: 1.22.5
+  minKubeVersion: 1.22.7
   provider:
     name: Hazelcast, Inc
   version: 5.0.0
