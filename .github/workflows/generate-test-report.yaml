@@ -20,7 +20,7 @@ jobs:
     defaults:
       run:
         shell: bash
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     environment:
       name: report
       url: ${{ env.REPORT_PAGE_URL }}/${{ inputs.WORKFLOW_ID }}

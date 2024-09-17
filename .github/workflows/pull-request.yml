@@ -90,6 +90,7 @@ jobs:
   agent-unit-tests:
     name: Run agent unit tests
     runs-on: ubicloud-standard-2
+    if: ( !cancelled() && github.event_name == 'pull_request' )
     steps:
       - name: Checkout
         uses: actions/checkout@v4
