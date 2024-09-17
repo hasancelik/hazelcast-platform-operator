@@ -908,6 +908,30 @@ var _ = Describe("Hazelcast CR", func() {
 			Expect(k8sClient.Create(context.Background(), hz)).
 				Should(MatchError(ContainSubstring("spec.persistence.pvc.accessModes: Required value: must be set when persistence is enabled")))
 		})
+
+		It("deprecated baseDir field should have no effect", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.Persistence = &hazelcastv1alpha1.HazelcastPersistenceConfiguration{
+				DeprecatedBaseDir: "deprecated-base-dir",
+				PVC: &hazelcastv1alpha1.PvcConfiguration{
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			create(hz)
+			assertHzStatusIsPending(hz)
+
+			cfg := getSecret(hz)
+			w := &config.HazelcastWrapper{}
+
+			Expect(yaml.Unmarshal(cfg.Data["hazelcast.yaml"], w)).Should(Succeed())
+			Expect(w.Hazelcast.Persistence.BaseDir).Should(Equal("/data/persistence/base-dir"))
+		})
 	})
 
 	Context("with JVM configuration", func() {
@@ -1524,6 +1548,21 @@ var _ = Describe("Hazelcast CR", func() {
 					Should(MatchError(ContainSubstring("spec.licenseKeySecretName in body should be at least 1 chars long")))
 			})
 		})
+		When("Deprecated licenseKeySecret field is used", func() {
+			It("should pass the value in it to licenseKeySecretName field", func() {
+				hz := &hazelcastv1alpha1.Hazelcast{
+					ObjectMeta: randomObjectMeta(namespace),
+					Spec: hazelcastv1alpha1.HazelcastSpec{
+						DeprecatedLicenseKeySecret: "secret-name",
+					},
+				}
+
+				licenseSecret := CreateLicenseKeySecret(hz.Spec.GetLicenseKeySecretName(), hz.Namespace)
+				assertExists(lookupKey(licenseSecret), licenseSecret)
+
+				Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
+			})
+		})
 	})
 
 	Context("with AdvancedNetwork configuration", func() {
@@ -2002,6 +2041,33 @@ var _ = Describe("Hazelcast CR", func() {
 
 			Expect(k8sClient.Create(context.Background(), hz)).
 				Should(MatchError(ContainSubstring("is invalid: spec.advancedNetwork.wan[1].name: Duplicate value: \"athens\"")))
+		})
+
+		It("should set deprecated port count in wan config to 1 even if it is set to a different value", func() {
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.AdvancedNetwork = &hazelcastv1alpha1.AdvancedNetwork{
+				WAN: []hazelcastv1alpha1.WANConfig{
+					{
+						Name:                "athens",
+						Port:                5710,
+						DeprecatedPortCount: ptr.To(uint(5)),
+						ServiceType:         hazelcastv1alpha1.WANServiceTypeLoadBalancer,
+					},
+				},
+			}
+
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+
+			create(hz)
+			assertHzStatusIsPending(hz)
+
+			cfg := getSecret(hz)
+			w := &config.HazelcastWrapper{}
+			Expect(yaml.Unmarshal(cfg.Data["hazelcast.yaml"], w)).Should(Succeed())
+			Expect(w.Hazelcast.AdvancedNetwork.WanServerSocketEndpointConfig["athens"].PortAndPortCount.PortCount).Should(Equal(uint(1)))
 		})
 	})
 

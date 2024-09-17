@@ -186,9 +186,6 @@ spec:
                   type: string
                 description: ManagementCenter Kubernetes resource labels
                 type: object
-              licenseKeySecret:
-                description: licenseKeySecret is a deprecated alias for licenseKeySecretName.
-                type: string
               licenseKeySecretName:
                 description: Name of the secret with Hazelcast Enterprise License
                   Key.

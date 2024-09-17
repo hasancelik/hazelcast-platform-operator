@@ -29,10 +29,6 @@ type ManagementCenterSpec struct {
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
-	// licenseKeySecret is a deprecated alias for licenseKeySecretName.
-	// +optional
-	DeprecatedLicenseKeySecret string `json:"licenseKeySecret,omitempty"`
-
 	// Name of the secret with Hazelcast Enterprise License Key.
 	// +kubebuilder:validation:MinLength:=1
 	// +required
@@ -80,9 +76,6 @@ type ManagementCenterSpec struct {
 }
 
 func (s *ManagementCenterSpec) GetLicenseKeySecretName() string {
-	if s.LicenseKeySecretName == "" {
-		return s.DeprecatedLicenseKeySecret
-	}
 	return s.LicenseKeySecretName
 }
 

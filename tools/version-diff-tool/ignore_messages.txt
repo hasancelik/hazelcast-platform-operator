@@ -1,2 +1,4 @@
 request-property-max-set
 request-property-min-set
+managementcenter.hazelcast.com
+		removed the request property 'spec.licenseKeySecret'
