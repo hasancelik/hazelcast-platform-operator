@@ -2046,7 +2046,7 @@ func podAnnotations(annotations map[string]string, h *hazelcastv1alpha1.Hazelcas
 		delete(annotations, n.ExposeExternallyAnnotation)
 	}
 
-	cfg := config.HazelcastWrapper{Hazelcast: configForcingRestart(config.HazelcastBasicConfig(h))}
+	cfg := config.RestartConfigWrapper{Hazelcast: config.ForcingRestart(h)}
 	cfgYaml, err := yaml.Marshal(cfg)
 	if err != nil {
 		return nil, err
@@ -2074,25 +2074,6 @@ func hazelcastContainerPorts(h *hazelcastv1alpha1.Hazelcast) []corev1.ContainerP
 
 	ports = append(ports, hazelcastContainerWanPorts(h)...)
 	return ports
-}
-
-func configForcingRestart(hz config.Hazelcast) config.Hazelcast {
-	// Apart from these changes, any change in the statefulset spec, labels, annotation can force a restart.
-	return config.Hazelcast{
-		ClusterName:        hz.ClusterName,
-		Jet:                hz.Jet,
-		UserCodeDeployment: hz.UserCodeDeployment,
-		Properties:         hz.Properties,
-		AdvancedNetwork: config.AdvancedNetwork{
-			ClientServerSocketEndpointConfig: config.ClientServerSocketEndpointConfig{
-				SSL: hz.AdvancedNetwork.ClientServerSocketEndpointConfig.SSL,
-			},
-			MemberServerSocketEndpointConfig: config.MemberServerSocketEndpointConfig{
-				SSL: hz.AdvancedNetwork.MemberServerSocketEndpointConfig.SSL,
-			},
-		},
-		CPSubsystem: hz.CPSubsystem,
-	}
 }
 
 func metadata(h *hazelcastv1alpha1.Hazelcast) metav1.ObjectMeta {

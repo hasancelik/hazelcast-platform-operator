@@ -140,18 +140,7 @@ func HazelcastConfig(ctx context.Context, c client.Client, h *hazelcastv1alpha1.
 
 func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 	cfg := Hazelcast{
-		AdvancedNetwork: AdvancedNetwork{
-			Enabled: true,
-			Join: Join{
-				Kubernetes: Kubernetes{
-					Enabled:                 ptr.To(true),
-					ServiceName:             h.Name,
-					ServicePort:             n.MemberServerSocketPort,
-					ServicePerPodLabelName:  n.ServicePerPodLabelName,
-					ServicePerPodLabelValue: n.LabelValueTrue,
-				},
-			},
-		},
+		AdvancedNetwork: buildAdvancedNetwork(h),
 	}
 
 	if h.Spec.DeprecatedUserCodeDeployment != nil {
@@ -161,35 +150,7 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 	}
 
 	if h.Spec.JetEngineConfiguration.IsConfigured() {
-		cfg.Jet = Jet{
-			Enabled:               h.Spec.JetEngineConfiguration.Enabled,
-			ResourceUploadEnabled: ptr.To(h.Spec.JetEngineConfiguration.ResourceUploadEnabled),
-		}
-
-		if h.Spec.JetEngineConfiguration.Instance.IsConfigured() {
-			i := h.Spec.JetEngineConfiguration.Instance
-			cfg.Jet.Instance = JetInstance{
-				CooperativeThreadCount:         i.CooperativeThreadCount,
-				FlowControlPeriodMillis:        &i.FlowControlPeriodMillis,
-				BackupCount:                    &i.BackupCount,
-				ScaleUpDelayMillis:             &i.ScaleUpDelayMillis,
-				LosslessRestartEnabled:         &i.LosslessRestartEnabled,
-				MaxProcessorAccumulatedRecords: i.MaxProcessorAccumulatedRecords,
-			}
-		}
-
-		if h.Spec.JetEngineConfiguration.EdgeDefaults.IsConfigured() {
-			e := h.Spec.JetEngineConfiguration.EdgeDefaults
-			cfg.Jet.EdgeDefaults = EdgeDefaults{
-				QueueSize:               e.QueueSize,
-				PacketSizeLimit:         e.PacketSizeLimit,
-				ReceiveWindowMultiplier: e.ReceiveWindowMultiplier,
-			}
-		}
-	}
-
-	if h.Spec.ExposeExternally.UsesNodeName() {
-		cfg.AdvancedNetwork.Join.Kubernetes.UseNodeNameAsExternalAddress = ptr.To(true)
+		cfg.Jet = buildJetConfig(h)
 	}
 
 	if h.Spec.ClusterName != "" {
@@ -343,23 +304,135 @@ func HazelcastBasicConfig(h *hazelcastv1alpha1.Hazelcast) Hazelcast {
 		}
 	}
 	if h.Spec.CPSubsystem.IsEnabled() {
-		cfg.CPSubsystem = CPSubsystem{
-			CPMemberCount:                     *h.Spec.ClusterSize,
-			PersistenceEnabled:                true,
-			BaseDir:                           n.CPBaseDir,
-			GroupSize:                         h.Spec.ClusterSize,
-			SessionTimeToLiveSeconds:          h.Spec.CPSubsystem.SessionTTLSeconds,
-			SessionHeartbeatIntervalSeconds:   h.Spec.CPSubsystem.SessionHeartbeatIntervalSeconds,
-			MissingCpMemberAutoRemovalSeconds: h.Spec.CPSubsystem.MissingCpMemberAutoRemovalSeconds,
-			FailOnIndeterminateOperationState: h.Spec.CPSubsystem.FailOnIndeterminateOperationState,
-			DataLoadTimeoutSeconds:            h.Spec.CPSubsystem.DataLoadTimeoutSeconds,
-		}
-		if h.Spec.Persistence.IsEnabled() && !h.Spec.CPSubsystem.IsPVC() {
-			cfg.CPSubsystem.BaseDir = n.PersistenceMountPath + n.CPDirSuffix
-		}
+		cfg.CPSubsystem = buildCPSubsystemConfig(h)
 	}
 
 	return cfg
+}
+
+func buildAdvancedNetwork(h *hazelcastv1alpha1.Hazelcast) AdvancedNetwork {
+	an := AdvancedNetwork{
+		Enabled: true,
+		Join: Join{
+			Kubernetes: Kubernetes{
+				Enabled:                 ptr.To(true),
+				ServiceName:             h.Name,
+				ServicePort:             n.MemberServerSocketPort,
+				ServicePerPodLabelName:  n.ServicePerPodLabelName,
+				ServicePerPodLabelValue: n.LabelValueTrue,
+			},
+		},
+	}
+	if h.Spec.ExposeExternally.UsesNodeName() {
+		an.Join.Kubernetes.UseNodeNameAsExternalAddress = ptr.To(true)
+	}
+	// Member Network
+	an.MemberServerSocketEndpointConfig = MemberServerSocketEndpointConfig{
+		Port: PortAndPortCount{
+			Port:      n.MemberServerSocketPort,
+			PortCount: 1,
+		},
+	}
+
+	if h.Spec.AdvancedNetwork != nil && len(h.Spec.AdvancedNetwork.MemberServerSocketEndpointConfig.Interfaces) != 0 {
+		an.MemberServerSocketEndpointConfig.Interfaces = Interfaces{
+			Enabled:    true,
+			Interfaces: h.Spec.AdvancedNetwork.MemberServerSocketEndpointConfig.Interfaces,
+		}
+	}
+
+	// Client Network
+	an.ClientServerSocketEndpointConfig = ClientServerSocketEndpointConfig{
+		Port: PortAndPortCount{
+			Port:      n.ClientServerSocketPort,
+			PortCount: 1,
+		},
+	}
+
+	if h.Spec.AdvancedNetwork != nil && len(h.Spec.AdvancedNetwork.ClientServerSocketEndpointConfig.Interfaces) != 0 {
+		an.ClientServerSocketEndpointConfig.Interfaces = Interfaces{
+			Enabled:    true,
+			Interfaces: h.Spec.AdvancedNetwork.ClientServerSocketEndpointConfig.Interfaces,
+		}
+	}
+
+	// Rest Network
+	an.RestServerSocketEndpointConfig.Port = PortAndPortCount{
+		Port:      n.RestServerSocketPort,
+		PortCount: 1,
+	}
+	an.RestServerSocketEndpointConfig.EndpointGroups.Persistence.Enabled = ptr.To(true)
+	an.RestServerSocketEndpointConfig.EndpointGroups.HealthCheck.Enabled = ptr.To(true)
+	an.RestServerSocketEndpointConfig.EndpointGroups.ClusterWrite.Enabled = ptr.To(true)
+
+	// WAN Network
+	if h.Spec.AdvancedNetwork != nil && len(h.Spec.AdvancedNetwork.WAN) > 0 {
+		an.WanServerSocketEndpointConfig = make(map[string]WanPort)
+		for _, w := range h.Spec.AdvancedNetwork.WAN {
+			an.WanServerSocketEndpointConfig[w.Name] = WanPort{
+				PortAndPortCount: PortAndPortCount{
+					Port:      w.Port,
+					PortCount: 1,
+				},
+			}
+		}
+	} else { //Default WAN Configuration
+		an.WanServerSocketEndpointConfig = make(map[string]WanPort)
+		an.WanServerSocketEndpointConfig["default"] = WanPort{
+			PortAndPortCount: PortAndPortCount{
+				Port:      n.WanDefaultPort,
+				PortCount: 1,
+			},
+		}
+	}
+	return an
+}
+
+func buildCPSubsystemConfig(h *hazelcastv1alpha1.Hazelcast) CPSubsystem {
+	cpSubsystem := CPSubsystem{
+		CPMemberCount:                     *h.Spec.ClusterSize,
+		PersistenceEnabled:                true,
+		BaseDir:                           n.CPBaseDir,
+		GroupSize:                         h.Spec.ClusterSize,
+		SessionTimeToLiveSeconds:          h.Spec.CPSubsystem.SessionTTLSeconds,
+		SessionHeartbeatIntervalSeconds:   h.Spec.CPSubsystem.SessionHeartbeatIntervalSeconds,
+		MissingCpMemberAutoRemovalSeconds: h.Spec.CPSubsystem.MissingCpMemberAutoRemovalSeconds,
+		FailOnIndeterminateOperationState: h.Spec.CPSubsystem.FailOnIndeterminateOperationState,
+		DataLoadTimeoutSeconds:            h.Spec.CPSubsystem.DataLoadTimeoutSeconds,
+	}
+	if h.Spec.Persistence.IsEnabled() && !h.Spec.CPSubsystem.IsPVC() {
+		cpSubsystem.BaseDir = n.PersistenceMountPath + n.CPDirSuffix
+	}
+	return cpSubsystem
+}
+
+func buildJetConfig(h *hazelcastv1alpha1.Hazelcast) Jet {
+	jet := Jet{
+		Enabled:               h.Spec.JetEngineConfiguration.Enabled,
+		ResourceUploadEnabled: ptr.To(h.Spec.JetEngineConfiguration.ResourceUploadEnabled),
+	}
+
+	if h.Spec.JetEngineConfiguration.Instance.IsConfigured() {
+		i := h.Spec.JetEngineConfiguration.Instance
+		jet.Instance = JetInstance{
+			CooperativeThreadCount:         i.CooperativeThreadCount,
+			FlowControlPeriodMillis:        &i.FlowControlPeriodMillis,
+			BackupCount:                    &i.BackupCount,
+			ScaleUpDelayMillis:             &i.ScaleUpDelayMillis,
+			LosslessRestartEnabled:         &i.LosslessRestartEnabled,
+			MaxProcessorAccumulatedRecords: i.MaxProcessorAccumulatedRecords,
+		}
+	}
+
+	if h.Spec.JetEngineConfiguration.EdgeDefaults.IsConfigured() {
+		e := h.Spec.JetEngineConfiguration.EdgeDefaults
+		jet.EdgeDefaults = EdgeDefaults{
+			QueueSize:               e.QueueSize,
+			PacketSizeLimit:         e.PacketSizeLimit,
+			ReceiveWindowMultiplier: e.ReceiveWindowMultiplier,
+		}
+	}
+	return jet
 }
 
 func NewSSLProperties(trustStorePath, keyStorePath, password, protocol string, auth hazelcastv1alpha1.MutualAuthentication) SSLProperties {

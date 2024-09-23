@@ -3041,4 +3041,35 @@ var _ = Describe("Hazelcast CR", func() {
 				Should(MatchError(ContainSubstring("cluster with CP Subsystem enabled can have 3, 5, or 7 members")))
 		})
 	})
+
+	Context("Configs Forcing restart", func() {
+		It("Changing TLS secret name should restart the cluster", func() {
+			s1 := CreateTLSSecret("secret1", namespace)
+			spec := test.HazelcastSpec(defaultHazelcastSpecValues())
+			spec.TLS = &hazelcastv1alpha1.TLS{
+				SecretName: s1.Name,
+			}
+			hz := &hazelcastv1alpha1.Hazelcast{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec:       spec,
+			}
+			create(hz)
+			assertHzStatusIsPending(hz)
+			ss := getStatefulSet(hz)
+			initialChecksum := ss.Spec.Template.Annotations[n.CurrentHazelcastConfigForcingRestartChecksum]
+
+			s2 := CreateTLSSecret("secret2", namespace)
+			update(hz, func(h *hazelcastv1alpha1.Hazelcast) *hazelcastv1alpha1.Hazelcast {
+				h.Spec.TLS = &hazelcastv1alpha1.TLS{
+					SecretName: s2.Name,
+				}
+				return h
+			})
+			assertHzStatusIsPending(hz)
+			Eventually(func() string {
+				upSs := getStatefulSet(hz)
+				return upSs.Spec.Template.Annotations[n.CurrentHazelcastConfigForcingRestartChecksum]
+			}, timeout, interval).ShouldNot(Equal(initialChecksum))
+		})
+	})
 })
