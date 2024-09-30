@@ -38,7 +38,7 @@ resources:
 #- patches/webhook_in_jetjobsnapshots.yaml
 #- patches/webhook_in_hazelcastendpoints.yaml
 #- patches/webhook_in_wansyncs.yaml
-- path: patches/webhook_in_usercodenamespaces.yaml
+#- path: patches/webhook_in_usercodenamespaces.yaml
 #- path: patches/webhook_in_vectorcollections.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 

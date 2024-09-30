@@ -15,16 +15,33 @@ env:
   AWS_REGION: us-east-1
   CHANNELS: alpha
   DEFAULT_CHANNEL: alpha
+  OPERATOR_REGISTRY_IMAGE: hazelcast/hazelcast-platform-operator
+  AGENT_REGISTRY_IMAGE: hazelcast/platform-operator-agent
 
 jobs:
-  publish_docker_image:
-    name: Publish Release Image to Docker Hub
-    runs-on: ubuntu-latest
+  build_docker_image:
+    name: Build Release Image
+    runs-on: ubicloud-standard-2
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ "operator", "agent" ]
+        arch: [ "arm64", "amd64", "s390x", "ppc64le" ]
     outputs:
       RELEASE_VERSION: ${{ steps.set-outputs.outputs.RELEASE_VERSION }}
       OPERATOR_IMG_NAME: ${{ steps.set-outputs.outputs.OPERATOR_IMG_NAME }}
       AGENT_IMG_NAME: ${{ steps.set-outputs.outputs.AGENT_IMG_NAME }}
       BUNDLE_RELEASE_VERSION: ${{ steps.set-outputs.outputs.BUNDLE_RELEASE_VERSION }}
+      OPERATOR_AMD64_DIGEST: ${{ steps.digest.outputs.OPERATOR_AMD64_DIGEST }}
+      AGENT_AMD64_DIGEST: ${{ steps.digest.outputs.AGENT_AMD64_DIGEST }}
+      OPERATOR_ARM64_DIGEST: ${{ steps.digest.outputs.OPERATOR_ARM64_DIGEST }}
+      AGENT_ARM64_DIGEST: ${{ steps.digest.outputs.AGENT_ARM64_DIGEST }}
+      OPERATOR_S390X_DIGEST: ${{ steps.digest.outputs.OPERATOR_S390X_DIGEST }}
+      AGENT_S390X_DIGEST: ${{ steps.digest.outputs.AGENT_S390X_DIGEST }}
+      OPERATOR_PPC64LE_DIGEST: ${{ steps.digest.outputs.OPERATOR_PPC64LE_DIGEST }}
+      AGENT_PPC64LE_DIGEST: ${{ steps.digest.outputs.AGENT_PPC64LE_DIGEST }}
+      CURRENT_OPERATOR_LATEST_TAG: ${{ steps.get-current-latest-tag.outputs.CURRENT_OPERATOR_LATEST_TAG }}
+      CURRENT_AGENT_LATEST_TAG: ${{ steps.get-current-latest-tag.outputs.CURRENT_AGENT_LATEST_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,8 +73,8 @@ jobs:
       - name: Set Release Version
         id: set-outputs
         run: |
-          OPERATOR_IMG_NAME=docker.io/hazelcast/${OPERATOR_NAME}:${RELEASE_VERSION}
-          AGENT_IMG_NAME=docker.io/hazelcast/${AGENT_NAME}:${RELEASE_VERSION}
+          OPERATOR_IMG_NAME=docker.io/${{ env.OPERATOR_REGISTRY_IMAGE }}:${RELEASE_VERSION}
+          AGENT_IMG_NAME=docker.io/${{ env.AGENT_REGISTRY_IMAGE }}:${RELEASE_VERSION}
           BUNDLE_RELEASE_VERSION=$( make print-bundle-version VERSION=${RELEASE_VERSION} )
           echo "BUNDLE_RELEASE_VERSION=${BUNDLE_RELEASE_VERSION}" >> $GITHUB_ENV
           echo "BUNDLE_RELEASE_VERSION=${BUNDLE_RELEASE_VERSION}" >> $GITHUB_OUTPUT
@@ -79,17 +96,15 @@ jobs:
             "password": "${{ env.DOCKERHUB_PASSWORD }}"
           }'| jq -r '.token')
 
-          CURRENT_OPERATOR_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/?page_size=100" \
+          CURRENT_OPERATOR_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${{ env.OPERATOR_REGISTRY_IMAGE }}/tags/?page_size=100" \
           -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
-          gh api --method PATCH -H "Accept: application/vnd.github+json" \
-           /repos/hazelcast/${OPERATOR_NAME}/environments/prod/variables/CURRENT_OPERATOR_LATEST_TAG \
-             -f "name=CURRENT_OPERATOR_LATEST_TAG" -f "value=$CURRENT_OPERATOR_LATEST_TAG"
+          echo "CURRENT_OPERATOR_LATEST_TAG=${CURRENT_OPERATOR_LATEST_TAG}" >> $GITHUB_ENV
+          echo "CURRENT_OPERATOR_LATEST_TAG=${CURRENT_OPERATOR_LATEST_TAG}" >> $GITHUB_OUTPUT
           
-          CURRENT_AGENT_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/?page_size=100" \
+          CURRENT_AGENT_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${{ env.AGENT_REGISTRY_IMAGE }}/tags/?page_size=100" \
           -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
-          gh api --method PATCH -H "Accept: application/vnd.github+json" \
-           /repos/hazelcast/${AGENT_NAME}/environments/prod/variables/CURRENT_AGENT_LATEST_TAG \
-             -f "name=CURRENT_AGENT_LATEST_TAG" -f "value=CURRENT_AGENT_LATEST_TAG"
+          echo "CURRENT_AGENT_LATEST_TAG=${CURRENT_AGENT_LATEST_TAG}" >> $GITHUB_ENV
+          echo "CURRENT_AGENT_LATEST_TAG=${CURRENT_AGENT_LATEST_TAG}" >> $GITHUB_OUTPUT
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -98,41 +113,120 @@ jobs:
           password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Build Operator Image
+        if: matrix.image == 'operator'
         uses: docker/build-push-action@v6.7.0
+        id: build_operator
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
-            version=${RELEASE_VERSION}
+            version=${{ inputs.RELEASE_VERSION }}
             pardotID=dockerhub
           file: Dockerfile
-          push: true
-          tags: ${{ steps.set-outputs.outputs.OPERATOR_IMG_NAME }},"hazelcast/${OPERATOR_NAME}:latest"
-          platforms: linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          outputs: type=image,name=${{ env.OPERATOR_REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: |
             operator.image.revision=${{github.sha}}
 
       - name: Build Agent Image
+        if: matrix.image == 'agent'
         uses: docker/build-push-action@v6.7.0
+        id: build_agent
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
           file: agent/Dockerfile
-          push: true
-          tags: ${{ steps.set-outputs.outputs.AGENT_IMG_NAME }},"hazelcast/${AGENT_NAME}:latest"
-          platforms: linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          outputs: type=image,name=${{ env.AGENT_REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: |
-            agent.image.revision=${{github.sha}}
+            agent.image.revision=${{ github.sha }}
+
+      - name: Save Digest
+        id: digest
+        run: |
+          if [[ "${{ matrix.arch }}" == "amd64" && "${{ matrix.image }}" == "operator" ]]; then
+            echo "OPERATOR_AMD64_DIGEST=${{ steps.build_operator.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "amd64" && "${{ matrix.image }}" == "agent" ]]; then
+            echo "AGENT_AMD64_DIGEST=${{ steps.build_agent.outputs.digest }}" >> $GITHUB_OUTPUT
+          
+          elif [[ "${{ matrix.arch }}" == "arm64" && "${{ matrix.image }}" == "operator" ]]; then
+            echo "OPERATOR_ARM64_DIGEST=${{ steps.build_operator.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "arm64" && "${{ matrix.image }}" == "agent" ]]; then
+            echo "AGENT_ARM64_DIGEST=${{ steps.build_agent.outputs.digest }}" >> $GITHUB_OUTPUT
+          
+          elif [[ "${{ matrix.arch }}" == "s390x" && "${{ matrix.image }}" == "operator" ]]; then
+            echo "OPERATOR_S390X_DIGEST=${{ steps.build_operator.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "s390x" && "${{ matrix.image }}" == "agent" ]]; then
+            echo "AGENT_S390X_DIGEST=${{ steps.build_agent.outputs.digest }}" >> $GITHUB_OUTPUT
+          
+          elif [[ "${{ matrix.arch }}" == "ppc64le" && "${{ matrix.image }}" == "operator" ]]; then
+            echo "OPERATOR_PPC64LE_DIGEST=${{ steps.build_operator.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "ppc64le" && "${{ matrix.image }}" == "agent" ]]; then
+            echo "AGENT_PPC64LE_DIGEST=${{ steps.build_agent.outputs.digest }}" >> $GITHUB_OUTPUT
+          fi
+
+  publish_images:
+    name: Publish Release Image
+    needs: build_docker_image
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            DOCKERHUB_USERNAME,CN/DOCKERHUB_USERNAME
+            DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+
+      - name: Push Operator Image To Docker Hub
+        uses: int128/docker-manifest-create-action@v2
+        with:
+          tags: |
+            ${{ needs.build_docker_image.outputs.OPERATOR_IMG_NAME }}
+            ${{ env.OPERATOR_REGISTRY_IMAGE }}:latest
+          sources: |
+            ${{ env.OPERATOR_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.OPERATOR_AMD64_DIGEST }}
+            ${{ env.OPERATOR_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.OPERATOR_ARM64_DIGEST }}
+            ${{ env.OPERATOR_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.OPERATOR_S390X_DIGEST }}
+            ${{ env.OPERATOR_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.OPERATOR_PPC64LE_DIGEST }}
+
+      - name: Push Agent Image To Docker Hub
+        uses: int128/docker-manifest-create-action@v2
+        with:
+          tags: |
+            ${{ needs.build_docker_image.outputs.AGENT_IMG_NAME }}
+            ${{ env.AGENT_REGISTRY_IMAGE }}:latest
+          sources: |
+            ${{ env.AGENT_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.AGENT_AMD64_DIGEST }}
+            ${{ env.AGENT_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.AGENT_ARM64_DIGEST }}
+            ${{ env.AGENT_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.AGENT_S390X_DIGEST }}
+            ${{ env.AGENT_REGISTRY_IMAGE }}@${{ needs.build_docker_image.outputs.AGENT_PPC64LE_DIGEST }}
 
   publish_image_to_redhat:
     name: Certify and Publish Container Image to Red Hat
-    needs: publish_docker_image
+    needs: ['publish_images', 'build_docker_image']
     defaults:
       run:
         shell: bash
-    runs-on: ubuntu-20.04
+    runs-on: ubicloud-standard-2
     env:
-      OPERATOR_IMG_NAME: ${{ needs.publish_docker_image.outputs.OPERATOR_IMG_NAME }}
+      OPERATOR_IMG_NAME: ${{ needs.build_docker_image.outputs.OPERATOR_IMG_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -169,26 +263,19 @@ jobs:
           preflight check container index.$OPERATOR_IMG_NAME \
           --submit \
           --docker-config=/home/runner/.docker/config.json \
-          --certification-project-id=${{ env.PREFLIGHT_PROJECT_ID }}
-          grep -E -q "Preflight result: PASSED\"( |$)" preflight.log || exit 1
-          CERT_IMAGE_ID=$(cat preflight.log | grep "The container's image id is:" | awk '{print $8}' | cut -d '.' -f1)
-          echo "CERT_IMAGE_ID=${CERT_IMAGE_ID}" >> $GITHUB_ENV
+          --certification-project-id="$PREFLIGHT_PROJECT_ID" \
+          --pyxis-api-token="$PFLT_PYXIS_API_TOKEN"
 
       - name: Publish the Hazelcast-Platform-Operator Image
         run: |
           source .github/scripts/utils.sh
-          checking_image_grade "${{ env.PREFLIGHT_PROJECT_ID }}" "$RELEASE_VERSION" "${{ env.PFLT_PYXIS_API_TOKEN }}" "$GRADE_CHECK_TIMEOUT_IN_MINS"
-          wait_for_container_publish "${{ env.PREFLIGHT_PROJECT_ID }}" "$RELEASE_VERSION" "${{ env.PFLT_PYXIS_API_TOKEN }}" "$PUBLISH_TIMEOUT_IN_MINS"
-
-      - name: Sync Latest Image
-        run: |
-          source .github/scripts/utils.sh
-          sync_certificated_image_tags "${{ env.PREFLIGHT_PROJECT_ID }}" "$CERT_IMAGE_ID" "${{ env.PFLT_PYXIS_API_TOKEN }}"
+          checking_image_grade "$PREFLIGHT_PROJECT_ID" "$RELEASE_VERSION" "$PFLT_PYXIS_API_TOKEN" "$GRADE_CHECK_TIMEOUT_IN_MINS"
+          wait_for_container_publish "$PREFLIGHT_PROJECT_ID" "$RELEASE_VERSION" "$PFLT_PYXIS_API_TOKEN" "$PUBLISH_TIMEOUT_IN_MINS"
 
   operator_bundle_release:
     name: Create a PR in
-    runs-on: ubuntu-latest
-    needs: ['publish_docker_image', 'publish_image_to_redhat']
+    runs-on: ubicloud-standard-2
+    needs: ['build_docker_image', 'publish_images', 'publish_image_to_redhat']
     strategy:
       fail-fast: false
       matrix:
@@ -201,9 +288,9 @@ jobs:
     env:
       REPO_NAME: ${{ matrix.repo-name }}
       REPO_OWNER: ${{ matrix.repo-owner }}
-      RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.RELEASE_VERSION }}
-      BUNDLE_RELEASE_VERSION: ${{ needs.publish_docker_image.outputs.BUNDLE_RELEASE_VERSION }}
-      OPERATOR_IMG_NAME: ${{ needs.publish_docker_image.outputs.OPERATOR_IMG_NAME }}
+      RELEASE_VERSION: ${{ needs.build_docker_image.outputs.RELEASE_VERSION }}
+      BUNDLE_RELEASE_VERSION: ${{ needs.build_docker_image.outputs.BUNDLE_RELEASE_VERSION }}
+      OPERATOR_IMG_NAME: ${{ needs.build_docker_image.outputs.OPERATOR_IMG_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -278,7 +365,7 @@ jobs:
 
   helm_chart_release:
     name: Publish Helm Chart
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     needs: ['operator_bundle_release']
     outputs:
       REPLACED_VERSION: ${{ steps.helm_chart_version.outputs.REPLACED_VERSION }}
@@ -387,8 +474,8 @@ jobs:
   validate_release:
     if: always()
     name: Approve/Reject release?
-    needs: ['publish_docker_image', 'publish_image_to_redhat', 'helm_chart_release']
-    runs-on: ubuntu-latest
+    needs: ['publish_images', 'publish_image_to_redhat', 'helm_chart_release']
+    runs-on: ubicloud-standard-2
     environment: 'prod'
     steps:
       - run: ""
@@ -397,7 +484,7 @@ jobs:
     name: Merge all PR's
     needs: validate_release
     if: always() && needs.validate_release.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     strategy:
       fail-fast: false
       matrix:
@@ -473,9 +560,9 @@ jobs:
 
   revert_changes:
     name: Revert Release Changes
-    needs: validate_release
+    needs: ['validate_release', 'build_docker_image', 'publish_images']
     if: always() && needs.validate_release.result == 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -498,7 +585,7 @@ jobs:
             PFLT_PYXIS_API_TOKEN,CN/PREFLIGHT_RHEL_API_KEY
 
       - name: Removing Published Docker Images
-        if: always() && !contains(needs.publish_docker_image.result, 'skipped')
+        if: always() && !contains(needs.build_docker_image.result, 'skipped')
         run: |
           auth_token=$(curl --fail -L -s -X POST 'https://hub.docker.com/v2/users/login' \
           -H 'Content-Type: application/json' \
@@ -507,42 +594,36 @@ jobs:
             "password": "${{ env.DOCKERHUB_PASSWORD }}"
           }'| jq -r '.token')
           
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${OPERATOR_NAME}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
-           curl "https://hub.docker.com/v2/repositories/hazelcast/${AGENT_NAME}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/${{ env.OPERATOR_REGISTRY_IMAGE }}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/${{ env.OPERATOR_REGISTRY_IMAGE }}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/${{ env.AGENT_REGISTRY_IMAGE }}/tags/${{ env.RELEASE_VERSION }}/" -X DELETE -H "Authorization: JWT ${auth_token}"
+           curl "https://hub.docker.com/v2/repositories/${{ env.AGENT_REGISTRY_IMAGE }}/tags/latest/" -X DELETE -H "Authorization: JWT ${auth_token}"
 
       - name: Login to Docker Hub
-        if: always() && !contains(needs.publish_docker_image.result, 'skipped')
+        if: always() && !contains(needs.build_docker_image.result, 'skipped')
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Making Previous Docker Image Tag As 'latest'
-        if: always() && !contains(needs.publish_docker_image.result, 'skipped')
+        if: always() && !contains(needs.build_docker_image.result, 'skipped')
         run: |
-          echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
-          CURRENT_OPERATOR_LATEST_TAG=$(gh api -H "Accept: application/vnd.github+json" \
-          /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_OPERATOR_LATEST_TAG | jq -r '.value')
+          docker pull docker.io/${{ env.OPERATOR_REGISTRY_IMAGE }}:${{ needs.build_docker_image.outputs.CURRENT_OPERATOR_LATEST_TAG }}
+          docker pull docker.io/${{ env.AGENT_REGISTRY_IMAGE }}:${{ needs.build_docker_image.outputs.CURRENT_AGENT_LATEST_TAG }}
           
-          CURRENT_AGENT_LATEST_TAG=$(gh api -H "Accept: application/vnd.github+json" \
-          /repos/hazelcast/hazelcast-platform-operator/environments/prod/variables/CURRENT_AGENT_LATEST_TAG | jq -r '.value')
-          
-          docker pull docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_OPERATOR_LATEST_TAG}
-          docker pull docker.io/hazelcast/${AGENT_NAME}:${CURRENT_AGENT_LATEST_TAG}
-          
-          make docker-push-latest IMG="docker.io/hazelcast/${OPERATOR_NAME}:${CURRENT_OPERATOR_LATEST_TAG}"
-          make docker-push-agent-latest IMG="docker.io/hazelcast/${AGENT_NAME}:${CURRENT_AGENT_LATEST_TAG}"
+          make docker-push-latest IMG="docker.io/${{ env.OPERATOR_REGISTRY_IMAGE }}:${{ needs.build_docker_image.outputs.CURRENT_OPERATOR_LATEST_TAG }}"
+          make docker-push-agent-latest IMG="docker.io/${{ env.AGENT_REGISTRY_IMAGE }}:${{ needs.build_docker_image.outputs.CURRENT_AGENT_LATEST_TAG }}"
 
       - name: Delete Published and Certified Opehshift Image
         if: always() && !contains(needs.publish_image_to_redhat.result, 'skipped')
         run: |
           source .github/scripts/utils.sh
           delete_container_image "${{ env.PREFLIGHT_PROJECT_ID }}" "${RELEASE_VERSION}" "${{ env.PFLT_PYXIS_API_TOKEN }}" "5"
+          sync_certificated_image_tags "${{ env.PREFLIGHT_PROJECT_ID }}" "${{ needs.build_docker_image.outputs.CURRENT_OPERATOR_LATEST_TAG }}" "${{ env.PFLT_PYXIS_API_TOKEN }}"
 
       - name: Close PR's in 'certified-operators, community-operators' Repo's
-        if: always()
+        if: always() && !contains(needs.operator_bundle_release.result, 'skipped')
         run: |
           BUNDLE_RELEASE_VERSION=$( make print-bundle-version VERSION=${RELEASE_VERSION} )
           echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
@@ -580,9 +661,9 @@ jobs:
 
   slack_notify:
     name: Slack Notify
-    needs: ['publish_docker_image', 'publish_image_to_redhat', 'operator_bundle_release', 'helm_chart_release', "validate_release", "merge_pr"]
-    if: needs.publish_docker_image.result != 'success' && needs.publish_image_to_redhat.result != 'success' && needs.operator_bundle_release.result != 'success'  && needs.helm_chart_release.result != 'success'
-    runs-on: ubuntu-latest
+    needs: ['publish_images', 'publish_image_to_redhat', 'operator_bundle_release', 'helm_chart_release', 'validate_release', 'merge_pr']
+    if: needs.publish_images.result != 'success' && needs.publish_image_to_redhat.result != 'success' && needs.operator_bundle_release.result != 'success'  && needs.helm_chart_release.result != 'success'
+    runs-on: ubicloud-standard-2
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2

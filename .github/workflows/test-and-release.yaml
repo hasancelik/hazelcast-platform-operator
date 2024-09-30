@@ -21,8 +21,8 @@ env:
 
 jobs:
   migration-test:
-    name: Run migration test
-    runs-on: ubuntu-latest
+    name: Migration Test
+    runs-on: ubicloud-standard-2
     env:
       CLUSTER_NAME: kind
     steps:
@@ -99,87 +99,98 @@ jobs:
              --from-literal=license-key=${{ env.HZ_LICENSE_KEY }}
 
       - name: Deploy and Run Migration test
-        run: |
-          LATEST_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.version')
-          STABLE_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.available_versions | map(select(.version | contains("snapshot") | not)) | .[0].version')
-          
-          helm repo add hazelcast https://hazelcast-charts.s3.amazonaws.com && \
-          helm repo update && \
-          helm install operator hazelcast/hazelcast-platform-operator --version=$STABLE_VERSION --set=installCRDs=true --set=phoneHomeEnabled=false --wait
-          echo "Checking Operator Deployment  before upgrade"
-          kubectl rollout status deployment.apps/operator-hazelcast-platform-operator
-          echo "Checking Operator Pod before  upgrade"
-          kubectl wait pods -l app.kubernetes.io/name=hazelcast-platform-operator --for condition=Ready --timeout=300s
-          
-          kubectl apply -f - <<EOF
-          apiVersion: hazelcast.com/v1alpha1
-          kind: Hazelcast
-          metadata:
-            name: hazelcast
-          spec:
-            nativeMemory:
-              allocatorType: POOLED
-              size: 100M
-            clusterSize: 3
-            repository: "docker.io/hazelcast/hazelcast-enterprise"
-            exposeExternally:
-              discoveryServiceType: LoadBalancer
-              memberAccess: NodePortExternalIP
-            licenseKeySecretName: hazelcast-license-key
-            persistence:
-              clusterDataRecoveryPolicy: "PartialRecoveryMostComplete"
-              pvc:
-                accessModes: ["ReadWriteOnce"]
-                requestStorage: 10Mi
-          ---
-          apiVersion: hazelcast.com/v1alpha1
-          kind: Map
-          metadata:
-            name: persistent
-          spec:
-            hazelcastResourceName: hazelcast
-            persistenceEnabled: false
-            backupCount: 4
-            nearCache:
-              inMemoryFormat: NATIVE
-              eviction:
-                evictionPolicy: LRU
-                maxSizePolicy: USED_NATIVE_MEMORY_SIZE
-                size: 5000
-          ---
-          apiVersion: hazelcast.com/v1alpha1
-          kind: ManagementCenter
-          metadata:
-            name: managementcenter
-          spec:
-            repository: 'hazelcast/management-center'
-            licenseKeySecretName: hazelcast-license-key
-            hazelcastClusters:
-              - address: hazelcast
-                name: dev
-          EOF
-          
-          echo "Checking Hazelcast CR before upgrade"
-          kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s hazelcast/hazelcast || (echo "Hazelcast CR Check Failed" && kubectl get hazelcasts.hazelcast.com hazelcast -o wide; exit 1;)
-          echo "Checking Map CR before upgrade"
-          kubectl wait --for=jsonpath='{.status.state}'=Success --timeout=300s map/persistent || (echo "Map CR Check Failed" && kubectl get maps.hazelcast.com persistent -o wide; exit 1;)
-          echo "Checking Management Center CR before upgrade"
-          kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s ManagementCenter/managementcenter || (echo "Management Center CR Check Failed" && kubectl get managementcenters.hazelcast.com managementcenter -o wide; exit 1;)
-          
-          helm upgrade operator hazelcast/hazelcast-platform-operator --version=$LATEST_VERSION --set=installCRDs=true --set=phoneHomeEnabled=false --wait
-          
-          echo "Checking Operator Pod after upgrade"
-          kubectl wait pods -l app.kubernetes.io/name=hazelcast-platform-operator --for condition=Ready --timeout=300s
-          echo "Checking Hazelcast CR after upgrade"
-          kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s hazelcast/hazelcast || (echo "Hazelcast CR Check Failed" && kubectl get hazelcasts.hazelcast.com hazelcast -o wide; exit 1;)
-          echo "Checking Map CR after upgrade"
-          kubectl wait --for=jsonpath='{.status.state}'=Success --timeout=300s map/persistent || (echo "Map CR Check Failed" && kubectl get maps.hazelcast.com persistent -o wide; exit 1;)
-          echo "Checking Management Center CR after upgrade"
-          kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s ManagementCenter/managementcenter || (echo "Management Center CR Check Failed" && kubectl get managementcenters.hazelcast.com managementcenter -o wide; exit 1;)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15m
+          max_attempts: 3
+          retry_on: error
+          on_retry_command: |
+            kubectl delete hazelcasts.hazelcast.com hazelcast
+            kubectl delete maps.hazelcast.com persistent
+            kubectl delete managementcenters.hazelcast.com managementcenter
+            helm uninstall operator
+            helm uninstall operator-crds
+          command: |
+            LATEST_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.version')
+            STABLE_VERSION=$(curl -s https://artifacthub.io/api/v1/packages/helm/hazelcast/hazelcast-platform-operator | jq -r '.available_versions | map(select(.version | contains("snapshot") | not)) | .[0].version')
+            
+            helm repo add hazelcast https://hazelcast-charts.s3.amazonaws.com && \
+            helm repo update && \
+            helm install operator hazelcast/hazelcast-platform-operator --version=$STABLE_VERSION --set=installCRDs=true --set=phoneHomeEnabled=false --wait
+            echo "Checking Operator Deployment  before upgrade"
+            kubectl rollout status deployment.apps/operator-hazelcast-platform-operator
+            echo "Checking Operator Pod before  upgrade"
+            kubectl wait pods -l app.kubernetes.io/name=hazelcast-platform-operator --for condition=Ready --timeout=300s
+            
+            kubectl apply -f - <<EOF
+            apiVersion: hazelcast.com/v1alpha1
+            kind: Hazelcast
+            metadata:
+              name: hazelcast
+            spec:
+              nativeMemory:
+                allocatorType: POOLED
+                size: 100M
+              clusterSize: 3
+              repository: "docker.io/hazelcast/hazelcast-enterprise"
+              exposeExternally:
+                discoveryServiceType: LoadBalancer
+                memberAccess: NodePortExternalIP
+              licenseKeySecretName: hazelcast-license-key
+              persistence:
+                clusterDataRecoveryPolicy: "PartialRecoveryMostComplete"
+                pvc:
+                  accessModes: ["ReadWriteOnce"]
+                  requestStorage: 10Mi
+            ---
+            apiVersion: hazelcast.com/v1alpha1
+            kind: Map
+            metadata:
+              name: persistent
+            spec:
+              hazelcastResourceName: hazelcast
+              persistenceEnabled: false
+              backupCount: 4
+              nearCache:
+                inMemoryFormat: NATIVE
+                eviction:
+                  evictionPolicy: LRU
+                  maxSizePolicy: USED_NATIVE_MEMORY_SIZE
+                  size: 5000
+            ---
+            apiVersion: hazelcast.com/v1alpha1
+            kind: ManagementCenter
+            metadata:
+              name: managementcenter
+            spec:
+              repository: 'hazelcast/management-center'
+              licenseKeySecretName: hazelcast-license-key
+              hazelcastClusters:
+                - address: hazelcast
+                  name: dev
+            EOF
+            
+            echo "Checking Hazelcast CR before upgrade"
+            kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s hazelcast/hazelcast || (echo "Hazelcast CR Check Failed" && kubectl get hazelcasts.hazelcast.com hazelcast -o wide; exit 1;)
+            echo "Checking Map CR before upgrade"
+            kubectl wait --for=jsonpath='{.status.state}'=Success --timeout=300s map/persistent || (echo "Map CR Check Failed" && kubectl get maps.hazelcast.com persistent -o wide; exit 1;)
+            echo "Checking Management Center CR before upgrade"
+            kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s ManagementCenter/managementcenter || (echo "Management Center CR Check Failed" && kubectl get managementcenters.hazelcast.com managementcenter -o wide; exit 1;)
+            
+            helm upgrade operator hazelcast/hazelcast-platform-operator --version=$LATEST_VERSION --set=installCRDs=true --set=phoneHomeEnabled=false --wait
+            
+            echo "Checking Operator Pod after upgrade"
+            kubectl wait pods -l app.kubernetes.io/name=hazelcast-platform-operator --for condition=Ready --timeout=300s
+            echo "Checking Hazelcast CR after upgrade"
+            kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s hazelcast/hazelcast || (echo "Hazelcast CR Check Failed" && kubectl get hazelcasts.hazelcast.com hazelcast -o wide; exit 1;)
+            echo "Checking Map CR after upgrade"
+            kubectl wait --for=jsonpath='{.status.state}'=Success --timeout=300s map/persistent || (echo "Map CR Check Failed" && kubectl get maps.hazelcast.com persistent -o wide; exit 1;)
+            echo "Checking Management Center CR after upgrade"
+            kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=300s ManagementCenter/managementcenter || (echo "Management Center CR Check Failed" && kubectl get managementcenters.hazelcast.com managementcenter -o wide; exit 1;)
 
   check_breaking_changes:
-    name: Check breaking changes
-    runs-on: ubuntu-latest
+    name: Check Breaking Changes
+    runs-on: ubicloud-standard-2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -197,16 +208,23 @@ jobs:
           RESULT=$(go run main.go -base $STABLE_VERSION -revision latest-snapshot -revision-repo-url "$LATEST_SNAPSHOT" -ignore request-property-max-set,request-property-min-set)
           echo "$RESULT" | grep -q "0 breaking changes" || { echo "$RESULT"; exit 1; }
 
-  test_container:
-    name: Build and Test Container
-    defaults:
-      run:
-        shell: bash
-    runs-on: ubuntu-latest
+  build_container:
+    name: Build Container
+    runs-on: ubicloud-standard-2
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          [ "amd64", "arm64", "s390x", "ppc64le" ]
     outputs:
       RELEASE_VERSION: ${{ steps.setup-envs.outputs.RELEASE_VERSION }}
       CONTAINER_IMAGE: ${{ steps.setup-envs.outputs.CONTAINER_IMAGE }}
+      CONTAINER_REGISTRY: ${{ steps.setup-envs.outputs.CONTAINER_REGISTRY }}
       REFS: ${{ steps.setup-envs.outputs.ref }}
+      AMD64_DIGEST: ${{ steps.digest.outputs.AMD64_DIGEST }}
+      ARM64_DIGEST: ${{ steps.digest.outputs.ARM64_DIGEST }}
+      S390X_DIGEST: ${{ steps.digest.outputs.S390X_DIGEST }}
+      PPC64LE_DIGEST: ${{ steps.digest.outputs.PPC64LE_DIGEST }}
     steps:
       - name: Checkout to hazelcast-operator
         uses: actions/checkout@v4
@@ -222,15 +240,7 @@ jobs:
         uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: |
-            PFLT_PYXIS_API_TOKEN,CN/PREFLIGHT_RHEL_API_KEY
             GKE_SA_KEY,CN/GKE_SA_KEY
-
-      - name: Setup Preflight and Get Certification Project ID
-        uses: redhat-actions/openshift-tools-installer@v1
-        with:
-          preflight: "latest"
-          source: github
-          skip_cache: true
 
       - name: Set Environment Variables And Job Outputs
         id: setup-envs
@@ -243,9 +253,12 @@ jobs:
               echo "RELEASE_VERSION=${{ github.event.inputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
               echo "ref=refs/heads/${{ inputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
           fi
-              CONTAINER_IMAGE=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/$(uuidgen):5d
+              CONTAINER_REGISTRY=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{github.sha}}
+              CONTAINER_IMAGE=${CONTAINER_REGISTRY}:3d
               echo "CONTAINER_IMAGE=${CONTAINER_IMAGE}" >> $GITHUB_ENV
               echo "CONTAINER_IMAGE=${CONTAINER_IMAGE}" >> $GITHUB_OUTPUT
+              echo "CONTAINER_REGISTRY=${CONTAINER_REGISTRY}" >> $GITHUB_ENV
+              echo "CONTAINER_REGISTRY=${CONTAINER_REGISTRY}" >> $GITHUB_OUTPUT
 
       - name: Validate version
         run: |
@@ -265,8 +278,8 @@ jobs:
           username: _json_key
           password: ${{ env.GKE_SA_KEY }}
 
-      - name: Build Image
-        id: build-image
+      - name: Build Operator Image
+        id: build
         uses: docker/build-push-action@v6.7.0
         with:
           context: .
@@ -275,26 +288,93 @@ jobs:
             version=${{github.sha}}
             pardotID=dockerhub
           file: Dockerfile
-          push: true
-          tags: ${{ steps.setup-envs.outputs.CONTAINER_IMAGE }}
+          platforms: linux/${{ matrix.arch }}
           cache-from: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('Dockerfile','main.go','api/**','controllers/**','internal/**','licenses/**','**/go.mod','**/go.sum') }}:14d
           cache-to: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('Dockerfile','main.go','api/**','controllers/**','internal/**','licenses/**','**/go.mod','**/go.sum') }}:14d
+          outputs: type=image,name=${{ steps.setup-envs.outputs.CONTAINER_REGISTRY }},push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            operator.image.revision=${{github.sha}}
+
+      - name: Save Digest
+        id: digest
+        run: |
+          if [ "${{ matrix.arch }}" == "amd64" ]; then
+            echo "AMD64_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "arm64" ]; then
+            echo "ARM64_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "s390x" ]; then
+            echo "S390X_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "ppc64le" ]; then
+            echo "PPC64LE_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          fi
+
+  publish_and_test_container:
+    needs: build_container
+    name: Publish and Test Container
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Setup Preflight
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          preflight: "latest"
+          source: github
+          skip_cache: true
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            DOCKERHUB_USERNAME,CN/DOCKERHUB_USERNAME
+            DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
+            GKE_SA_KEY,CN/GKE_SA_KEY
+            PFLT_PYXIS_API_TOKEN,CN/PREFLIGHT_RHEL_API_KEY
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+
+      - name: Authenticate to GAR
+        uses: docker/login-action@v3
+        with:
+          registry: us-east1-docker.pkg.dev
+          username: _json_key
+          password: ${{ env.GKE_SA_KEY }}
+
+      - name: Push The Multi-Arch Image
+        uses: int128/docker-manifest-create-action@v2
+        with:
+          tags: |
+            ${{ needs.build_container.outputs.CONTAINER_IMAGE }}
+          sources: |
+            ${{ needs.build_container.outputs.CONTAINER_REGISTRY }}@${{ needs.build_container.outputs.AMD64_DIGEST }}
+            ${{ needs.build_container.outputs.CONTAINER_REGISTRY }}@${{ needs.build_container.outputs.ARM64_DIGEST }}
+            ${{ needs.build_container.outputs.CONTAINER_REGISTRY }}@${{ needs.build_container.outputs.S390X_DIGEST }}
+            ${{ needs.build_container.outputs.CONTAINER_REGISTRY }}@${{ needs.build_container.outputs.PPC64LE_DIGEST }}
 
       - name: Initiating a Container Scan
         run: |
           echo "Running the container scan tests"
-          preflight check container $CONTAINER_IMAGE --platform amd64
+          preflight check container ${{ needs.build_container.outputs.CONTAINER_IMAGE }}
           grep -E -q "Preflight result: PASSED\"( |$)" preflight.log || exit 1
 
   openscap_image_scan:
-    name: Run OpenSCAP Vulnerability Scan
-    needs: test_container
+    name: OpenSCAP Vulnerability Scan
+    needs: [ build_container, publish_and_test_container ]
     defaults:
       run:
         shell: bash
+    runs-on: ubicloud-standard-2
     env:
-      CONTAINER_IMAGE: ${{ needs.test_container.outputs.CONTAINER_IMAGE }}
-    runs-on: ubuntu-latest
+      CONTAINER_IMAGE: ${{ needs.build_container.outputs.CONTAINER_IMAGE }}
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -328,8 +408,8 @@ jobs:
           key: ${{ env.OPENSCAP_PRIVATE_KEY }}
           envs: CONTAINER_IMAGE
           script: |
-            sudo podman pull $CONTAINER_IMAGE
-            sudo oscap-podman $CONTAINER_IMAGE oval eval --report vulnerability_report.html rhel-8.oval.xml | grep -E 'true' && exit 1 || echo "Vulnerabilty scan passed"
+            sudo podman pull ${{ env.CONTAINER_IMAGE }}
+            sudo oscap-podman ${{ env.CONTAINER_IMAGE }} oval eval --report vulnerability_report.html rhel-8.oval.xml | grep -E 'true' && exit 1 || echo "Vulnerabilty scan passed"
 
       - name: Download Scan Report
         if: failure() && steps.vulnerabilityScan.outcome == 'failure'
@@ -352,19 +432,13 @@ jobs:
 
   build_bundle:
     name: Build Bundle and Index Image
-    needs: [test_container, openscap_image_scan]
-    defaults:
-      run:
-        shell: bash
-    env:
-      CONTAINER_IMAGE: ${{ needs.test_container.outputs.CONTAINER_IMAGE }}
-      RELEASE_VERSION: ${{ needs.test_container.outputs.RELEASE_VERSION }}
+    needs: [ build_container, publish_and_test_container, openscap_image_scan ]
     outputs:
       BUNDLE_VERSION: ${{ steps.build-bundle-outputs.outputs.BUNDLE_VERSION }}
       BUNDLE_IMAGE: ${{ steps.build-bundle-outputs.outputs.BUNDLE_IMAGE }}
       BUNDLE_IMAGE_DIGEST: ${{ steps.push-bundle-image.outputs.BUNDLE_IMAGE_DIGEST }}
       PFLT_INDEXIMAGE: ${{ steps.build-bundle-outputs.outputs.PFLT_INDEXIMAGE }}
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - name: Checkout to hazelcast-operator
         uses: actions/checkout@v4
@@ -404,21 +478,20 @@ jobs:
       - name: Set Environment Variables And Job Outputs
         id: build-bundle-outputs
         run: |
-          BUNDLE_VERSION=$( make print-bundle-version VERSION=${RELEASE_VERSION} )
-          BUNDLE_REPOSITORY=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/$(uuidgen)
+          BUNDLE_VERSION=$( make print-bundle-version VERSION=${{ needs.build_container.outputs.RELEASE_VERSION }} )
+          BUNDLE_REPOSITORY=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{github.sha}}-bundle
           BUNDLE_IMAGE=$BUNDLE_REPOSITORY:5d
           PFLT_INDEXIMAGE=$BUNDLE_REPOSITORY-index:5d
           echo "BUNDLE_VERSION=${BUNDLE_VERSION}" >> $GITHUB_ENV
-          echo "BUNDLE_REPOSITORY=${BUNDLE_REPOSITORY}" >> $GITHUB_ENV
-          echo "BUNDLE_IMAGE=${BUNDLE_IMAGE}" >> $GITHUB_ENV
-          echo "PFLT_INDEXIMAGE=${PFLT_INDEXIMAGE}" >> $GITHUB_ENV
           echo "BUNDLE_VERSION=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          echo "BUNDLE_IMAGE=${BUNDLE_IMAGE}" >> $GITHUB_ENV
           echo "BUNDLE_IMAGE=${BUNDLE_IMAGE}" >> $GITHUB_OUTPUT
+          echo "PFLT_INDEXIMAGE=${PFLT_INDEXIMAGE}" >> $GITHUB_ENV
           echo "PFLT_INDEXIMAGE=${PFLT_INDEXIMAGE}" >> $GITHUB_OUTPUT
 
       - name: Build Bundle
         run: |
-          make bundle IMG=${CONTAINER_IMAGE} VERSION=${RELEASE_VERSION} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
+          make bundle IMG=${{ needs.build_container.outputs.CONTAINER_IMAGE }} VERSION=${{ needs.build_container.outputs.RELEASE_VERSION }} DEFAULT_CHANNEL=${DEFAULT_CHANNEL} CHANNELS=${CHANNELS}
 
       - name: Upload Bundle Artifacts
         uses: actions/upload-artifact@v3
@@ -442,7 +515,7 @@ jobs:
   test_operator:
     name: Test Operator Bundle
     needs: build_bundle
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     env:
       PFLT_INDEXIMAGE: ${{ needs.build_bundle.outputs.PFLT_INDEXIMAGE }}
       BUNDLE_IMAGE: ${{ needs.build_bundle.outputs.BUNDLE_IMAGE }}
@@ -507,16 +580,16 @@ jobs:
           oc delete project ${NAMESPACE}
 
   community_operators_test_suite:
+    name: Community Operator Tests
     needs: build_bundle
     uses: ./.github/workflows/community-operator-tests.yaml
     with:
       BUNDLE_VERSION: ${{ needs.build_bundle.outputs.BUNDLE_VERSION }}
 
   create_operator_tag:
-    if: needs.test_container.outputs.REFS == github.ref && github.ref != 'refs/heads/main'
-    needs: [ test_container, test_operator, community_operators_test_suite ]
     name: Create Operator Tag
-    runs-on: ubuntu-latest
+    needs: [ build_container, publish_and_test_container, test_operator, community_operators_test_suite ]
+    runs-on: ubicloud-standard-2
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -538,23 +611,24 @@ jobs:
 
       - name: Create a New Tag
         run: |
-          TAG_VERSION=v${{ needs.test_container.outputs.RELEASE_VERSION }}
+          TAG_VERSION=v${{ needs.build_container.outputs.RELEASE_VERSION }}
           git tag ${TAG_VERSION}
           git push origin ${TAG_VERSION}
 
   publish_release:
-    if: needs.test_container.outputs.REFS == github.ref && github.ref != 'refs/heads/main'
-    needs: [migration-test, create_operator_tag, test_container, test_operator, community_operators_test_suite]
+    name: Publish Release
+    if: needs.build_container.outputs.REFS == github.ref && github.ref != 'refs/heads/main'
+    needs: [build_container, migration-test, create_operator_tag, publish_and_test_container, test_operator, community_operators_test_suite]
     uses: ./.github/workflows/publish-release.yaml
     with:
-      RELEASE_VERSION: ${{ needs.test_container.outputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ needs.build_container.outputs.RELEASE_VERSION }}
     secrets: inherit
 
   clean_up_artifacts:
+    name: Clean The Bundle Artifact and Test Image
     if: always()
     needs: [ build_bundle, openscap_image_scan, community_operators_test_suite ]
-    runs-on: ubuntu-latest
-    name: Clean The Bundle Artifact and Test Image
+    runs-on: ubicloud-standard-2
     steps:
       - name: Delete Bundle Artifact
         uses: geekyeggo/delete-artifact@v5

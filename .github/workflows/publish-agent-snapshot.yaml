@@ -2,20 +2,28 @@ name: Publish Agent Snapshot
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - "agent/**"
 
 env:
   AWS_REGION: us-east-1
+  REGISTRY_IMAGE: hazelcast/platform-operator-agent
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  publish-snapshot-image:
-    name: Publish Agent Snapshot to Docker Hub
+  build_snapshot_image:
+    name: Build Agent Snapshot
     runs-on: ubicloud-standard-2
+    outputs:
+      AMD64_DIGEST: ${{ steps.digest.outputs.AMD64_DIGEST }}
+      ARM64_DIGEST: ${{ steps.digest.outputs.ARM64_DIGEST }}
+      S390X_DIGEST: ${{ steps.digest.outputs.S390X_DIGEST }}
+      PPC64LE_DIGEST: ${{ steps.digest.outputs.PPC64LE_DIGEST }}
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +32,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Docker Setup QEMU
         uses: docker/setup-qemu-action@v3.2.0
@@ -61,15 +77,66 @@ jobs:
 
       - name: Build and Push Operator Agent Image
         uses: docker/build-push-action@v6.7.0
+        id: build
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
           file: agent/Dockerfile
-          push: true
-          tags: hazelcast/platform-operator-agent:latest-snapshot
           platforms: linux/${{ matrix.arch }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: |
             agent.image.revision=${{ github.sha }}
+
+      - name: Save Digest
+        id: digest
+        run: |
+          if [ "${{ matrix.arch }}" == "amd64" ]; then
+            echo "AMD64_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "arm64" ]; then
+            echo "ARM64_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "s390x" ]; then
+            echo "S390X_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.arch }}" == "ppc64le" ]; then
+            echo "PPC64LE_DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          fi
+
+  publish-snapshot-image:
+    needs: build_snapshot_image
+    runs-on: ubicloud-standard-2
+    name: Publish Snapshot
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            DOCKERHUB_USERNAME,CN/DOCKERHUB_USERNAME
+            DOCKERHUB_PASSWORD,CN/DOCKERHUB_PASSWORD
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+
+      - name: Push The Multi-Arch Image
+        uses: int128/docker-manifest-create-action@v2
+        with:
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:latest-snapshot
+          sources: |
+            ${{ env.REGISTRY_IMAGE }}@${{ needs.build_snapshot_image.outputs.AMD64_DIGEST }}
+            ${{ env.REGISTRY_IMAGE }}@${{ needs.build_snapshot_image.outputs.ARM64_DIGEST }}
+            ${{ env.REGISTRY_IMAGE }}@${{ needs.build_snapshot_image.outputs.S390X_DIGEST }}
+            ${{ env.REGISTRY_IMAGE }}@${{ needs.build_snapshot_image.outputs.PPC64LE_DIGEST }}
 
   slack_notify:
     name: Slack Notify

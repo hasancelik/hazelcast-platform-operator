@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RELEASE_BRANCH: ${{ github.event.inputs.RELEASE_BRANCH }}
-      HZ_REPO: hazelcast/hazelcast
+      HZ_REPO: hazelcast/hazelcast-mono
       MC_REPO: hazelcast/management-center
     steps:
       - name: Validate version

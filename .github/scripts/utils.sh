@@ -26,60 +26,24 @@ get_image()
     echo "${RESPONSE}"
 }
 
-wait_for_container_scan()
-{
-    local PROJECT_ID=$1
-    local VERSION=$2
-    local RHEL_API_KEY=$3
-    local TIMEOUT_IN_MINS=$4
-
-    local IS_PUBLISHED=$(get_image published "${PROJECT_ID}" "${VERSION}" "${RHEL_API_KEY}" | jq -r '.total')
-    if [[ $IS_PUBLISHED == "1" ]]; then
-        echo "Image is already published, exiting"
-        return 0
-    fi
-
-    local NOF_RETRIES=$(( $TIMEOUT_IN_MINS / 2 ))
-    # Wait until the image is scanned
-    for i in `seq 1 ${NOF_RETRIES}`; do
-        local IMAGE=$(get_image not_published "${PROJECT_ID}" "${VERSION}" "${RHEL_API_KEY}")
-        local SCAN_STATUS=$(echo "$IMAGE" | jq -r '.data[0].scan_status')
-
-        if [[ $SCAN_STATUS == "in progress" ]]; then
-            echo "Scanning in progress, waiting..."
-        elif [[ $SCAN_STATUS == "null" ]];  then
-            echo "Image is still not present in the registry!"
-        elif [[ $SCAN_STATUS == "passed" ]]; then
-            echo "Scan passed!" ; return 0
-        else
-            echo "Scan failed!" ; return 1
-        fi
-
-        if [[ $i == $NOF_RETRIES ]]; then
-            echo "Timeout! Scan could not be finished"
-            return 42
-        fi
-        sleep 120
-    done
-}
-
 wait_for_container_publish()
 {
     local PROJECT_ID=$1
     local VERSION=$2
     local RHEL_API_KEY=$3
     local TIMEOUT_IN_MINS=$4
+    local NOF_IMAGES=4
 
     local NOF_RETRIES=$(( $TIMEOUT_IN_MINS * 6 ))
     # Wait until the image is published
     for i in `seq 1 ${NOF_RETRIES}`; do
         local IS_PUBLISHED=$(get_image published "${PROJECT_ID}" "${VERSION}" "${RHEL_API_KEY}" | jq -r '.total')
 
-        if [[ $IS_PUBLISHED == "1" ]]; then
-            echo "Image is published, exiting."
+        if [[ $IS_PUBLISHED == "$NOF_IMAGES" ]]; then
+            echo "Images are published, exiting."
             return 0
         else
-            echo "Image is still not published, waiting..."
+            echo "Images are still not published, waiting..."
         fi
 
         if [[ $i == $NOF_RETRIES ]]; then
@@ -96,17 +60,18 @@ wait_for_container_unpublish()
     local VERSION=$2
     local RHEL_API_KEY=$3
     local TIMEOUT_IN_MINS=$4
+    local NOF_IMAGES=4
 
     local NOF_RETRIES=$(( $TIMEOUT_IN_MINS * 6 ))
     # Wait until the image is unpublished
     for i in `seq 1 ${NOF_RETRIES}`; do
         local IS_NOT_PUBLISHED=$(get_image not_published "${PROJECT_ID}" "${VERSION}" "${RHEL_API_KEY}" | jq -r '.total')
 
-        if [[ $IS_NOT_PUBLISHED == "1" ]]; then
-            echo "Image is unpublished, exiting."
+        if [[ $IS_NOT_PUBLISHED == "$NOF_IMAGES" ]]; then
+            echo "Images are unpublished, exiting."
             return 0
         else
-            echo "Image is still unpublishing, waiting..."
+            echo "Images are still unpublishing, waiting..."
         fi
 
         if [[ $i == $NOF_RETRIES ]]; then
@@ -123,8 +88,8 @@ checking_image_grade()
     local VERSION=$2
     local RHEL_API_KEY=$3
     local TIMEOUT_IN_MINS=$4
-    FILTER="filter=deleted==false;repositories.published==false;repositories.tags.name==${VERSION}"
-    INCLUDE="include=data.freshness_grades.grade&include=data.freshness_grades.end_date"
+    local NOF_IMAGES=4
+    FILTER="filter=deleted==false;repositories.tags.name==${VERSION}"
 
     local NOF_RETRIES=$(( $TIMEOUT_IN_MINS * 3 ))
     for i in `seq 1 ${NOF_RETRIES}`; do
@@ -132,25 +97,25 @@ checking_image_grade()
     local GRADE_PRESENCE=$(curl -s -X 'GET' \
       "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/images?${FILTER}&page_size=100&page=0" \
       -H "accept: application/json" \
-      -H "X-API-KEY: ${RHEL_API_KEY}" | jq -r -e '.data[0].freshness_grades | length')
+      -H "X-API-KEY: ${RHEL_API_KEY}" | jq -r -e '[.data[]? | select(.freshness_grades != null)] | length')
 
-        if [[ ${GRADE_PRESENCE} -ne "0" ]]; then
+        if [[ ${GRADE_PRESENCE} -eq ${NOF_IMAGES} ]]; then
             GRADE_A=$(curl -s -X 'GET' \
-            "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/images?${INCLUDE}&${FILTER}&page_size=100&page=0" \
+            "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/images?${FILTER}&page_size=100&page=0" \
             -H "accept: application/json" \
-            -H "X-API-KEY: ${RHEL_API_KEY}" | jq -e '.data[0].freshness_grades[] | select(.grade =="A") | length')
-        if [[ ${GRADE_A} -ne "0" ]]; then
-            echo "The submitted image got a Health Index 'A'."
+            -H "X-API-KEY: ${RHEL_API_KEY}" | jq -e '[.data[].freshness_grades[] | select(.grade == "A")] | length')
+        if [[ ${GRADE_A} -eq ${NOF_IMAGES} ]]; then
+            echo "The submitted images got a Health Index 'A'."
             return 0
         else
-            echo "The submitted image didn’t get a Health Index 'A'."
+            echo "The submitted images didn’t get a Health Index 'A'."
             exit 1
         fi
         else
-            echo "The submitted image still has unknown Health Index Image, waiting..."
+            echo "The submitted images still has unknown Health Index Image, waiting..."
         fi
         if [[ ${i} == ${NOF_RETRIES} ]]; then
-            echo "Timeout! The submitted image has 'Unknown' Health Index."
+            echo "Timeout! The submitted images has 'Unknown' Health Index."
             return 42
         fi
         sleep 20
@@ -163,30 +128,30 @@ delete_container_image()
     local VERSION=$2
     local RHEL_API_KEY=$3
     local TIMEOUT_IN_MINS=$4
-
-    IMAGE_ID=$(curl -X 'GET' --silent \
+    FILTER="filter=deleted==false;repositories.published==true;repositories.tags.name==${VERSION}"
+    MANIFEST_LIST_DIGEST=$(curl -X 'GET' --silent \
     -H "X-API-KEY: $RHEL_API_KEY" \
     -H 'Content-Type: application/json' \
-    "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" | jq -r '.data | map(select(.status == "completed" and .operation == "sync-tags" and (.creation_date | split("T")[0] == (now | strftime("%Y-%m-%d"))))) | last | select(.) | .image_id')
+    "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/images?${FILTER}&page_size=100&page=0" | jq -r '.data | map(select(.container_grades.status == "completed" and (.creation_date | split("T")[0] == (now | strftime("%Y-%m-%d"))))) | last | select(.) | .repositories[0].manifest_list_digest')
 
-    if [ -n "$IMAGE_ID" ]; then
-        echo "Unpublishing certified image..."
+    if [ -n "$MANIFEST_LIST_DIGEST" ]; then
+        echo "Unpublishing certified images..."
         curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
         -H 'content-type: application/json' \
         -H "X-API-KEY: $RHEL_API_KEY" \
-        --data-raw '{"image_id":"'$IMAGE_ID'","operation":"unpublish"}' \
+        --data-raw '{"manifest_list_digest":"'$MANIFEST_LIST_DIGEST'","operation":"unpublish-manifest-list"}' \
         --compressed
 
         wait_for_container_unpublish $PROJECT_ID $VERSION $RHEL_API_KEY $TIMEOUT_IN_MINS
 
-        echo "Deleting certified image..."
+        echo "Deleting certified images..."
         curl --request POST "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
         -H 'content-type: application/json' \
         -H "X-API-KEY: $RHEL_API_KEY" \
-        --data-raw '{"image_id":"'$IMAGE_ID'","operation":"delete"}' \
+        --data-raw '{"manifest_list_digest":"'$MANIFEST_LIST_DIGEST'","operation":"delete-manifest-list"}' \
         --compressed
     else
-        echo "No image to unpublish and delete."
+        echo "No images to unpublish and delete."
     fi
 }
 
@@ -429,9 +394,15 @@ update_test_files()
 #This function sync certification tags and add the latest tag to the published image
 sync_certificated_image_tags()
 {
-     local PROJECT_ID=$1
-     local CERT_IMAGE_ID=$2
-     local RHEL_API_KEY=$3
+    local PROJECT_ID=$1
+    local VERSION=$2
+    local RHEL_API_KEY=$3
+    FILTER="filter=deleted==false;repositories.published==true;repositories.tags.name==${VERSION}"
+    CERT_IMAGE_ID=$(curl -X 'GET' --silent \
+        -H "X-API-KEY: $RHEL_API_KEY" \
+        -H 'Content-Type: application/json' \
+        "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/images?${FILTER}&page_size=100&page=0" | jq -r '.data[] | select(.container_grades.status == "completed") | ._id')
+
      curl -X 'POST' \
      "https://catalog.redhat.com/api/containers/v1/projects/certification/id/${PROJECT_ID}/requests/images" \
      -H 'accept: application/json' \
