@@ -588,6 +588,7 @@ jobs:
 
   create_operator_tag:
     name: Create Operator Tag
+    if: needs.build_container.outputs.REFS == github.ref && github.ref != 'refs/heads/main'
     needs: [ build_container, publish_and_test_container, test_operator, community_operators_test_suite ]
     runs-on: ubicloud-standard-2
     steps:
