@@ -259,7 +259,7 @@ test-e2e-split-kind: generate ginkgo ## Run end-to-end tests on Kind
 	$(GINKGO) -r --compilers=2 --output-interceptor-mode=none --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_KIND_PARALLEL_PROCESSES) --flake-attempts 2 --trace --label-filter="(kind && shard$(SHARD_ID)) && $(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 70m $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -agent-repo "$(AGENT_REPO)" -agent-version "$(AGENT_VERSION)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" $(GO_TEST_FLAGS) -storage-class "$(STORAGE_CLASS)"
 
 test-e2e: generate ginkgo ## Run end-to-end tests
-	$(GINKGO) -r --keep-going --output-interceptor-mode=none --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_PARALLEL_PROCESSES) --trace --label-filter="$(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 120m --flake-attempts 2 $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -deployNamespace "$(WATCHED_NAMESPACES)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -storage-class "$(STORAGE_CLASS)"
+	$(GINKGO) -r --keep-going --output-interceptor-mode=none --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --procs $(GINKGO_PARALLEL_PROCESSES) --trace --label-filter="$(E2E_TEST_LABELS)" --tags $(GO_BUILD_TAGS) --v --timeout 120m --flake-attempts 2 $(GINKGO_TEST_FLAGS) ./test/e2e -- -namespace "$(NAMESPACE)" -deployNamespace "$(WATCHED_NAMESPACES)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -storage-class "$(STORAGE_CLASS)" -agent-repo "$(AGENT_REPO)" -agent-version "$(AGENT_VERSION)"
 
 test-ph: generate ginkgo ## Run phone-home tests
 	$(GINKGO) -r --keep-going --junit-report=test_report_$(REPORT_SUFFIX).xml --output-dir=allure-results/$(WORKFLOW_ID) --trace --tags $(GO_BUILD_TAGS) --v --timeout 40m --output-interceptor-mode=none $(GINKGO_TEST_FLAGS) ./test/ph -- -namespace "$(NAMESPACE)" -hazelcast-version "$(HZ_VERSION)" -mc-version "$(MC_VERSION)" -eventually-timeout 8m  -delete-timeout 8m -storage-class "$(STORAGE_CLASS)"
@@ -410,14 +410,10 @@ bundle: operator-sdk manifests kustomize yq ## Generate bundle manifests and met
 
 olm-deploy: opm operator-sdk ## Deploying Operator with OLM bundle. Available modes are AllNamespace|OwnNamespace|SingleNamespace
 	set -xeEuo pipefail
-	@$(eval CONTAINER_IMAGE=ttl.sh/ci-$(shell uuidgen | tr "[:upper:]" "[:lower:]"):4h)
 	@$(eval CATALOG_IMAGE=ttl.sh/ci-$(shell uuidgen | tr "[:upper:]" "[:lower:]"):4h)
 	@$(eval BUNDLE_IMAGE=ttl.sh/bi-$(shell uuidgen | tr "[:upper:]" "[:lower:]"):4h)
-	$(MAKE) docker-build-ci IMG=$(CONTAINER_IMAGE) VERSION=$(VERSION)
-	$(MAKE) docker-push IMG=$(CONTAINER_IMAGE)
-	$(MAKE) bundle IMG=${CONTAINER_IMAGE} VERSION=$(VERSION)
-	docker build -f bundle.Dockerfile -t ${BUNDLE_IMAGE} .
-	docker push ${BUNDLE_IMAGE}
+	$(MAKE) bundle IMG=$(IMG) VERSION=$(VERSION)
+	docker build -f bundle.Dockerfile -t ${BUNDLE_IMAGE} --push .
 
 	rm -rf catalog/ cn-operator-template.yaml cn-catalog.yaml cn-group.yaml cn-subscription.yaml catalog.Dockerfile
 	mkdir catalog/

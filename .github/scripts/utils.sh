@@ -596,4 +596,24 @@ update_aks_nsg_rule() {
   echo "NSG rule '$NSG_RULE_NAME' updated successfully in NSG '$NSG_NAME' with source IP ranges."
 }
 
+get_docker_latest_tag() {
+  LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$1/tags/?page_size=100" \
+  | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+$")) | {name, last_updated}] | sort_by(.name) | last.name')
+  echo $LATEST_TAG
+}
+
+get_docker_latest_snapshot_tag() {
+  LATEST_SNAPSHOT_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$1/tags/?page_size=100" \
+  | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+-SNAPSHOT$")) | {name, last_updated}] | sort_by(.name) | last.name')
+  echo $LATEST_SNAPSHOT_TAG
+}
+
+# accept docker repo name
+update_version() {
+  sed -i '/Version of Hazelcast Platform\./{n;s/\+kubebuilder:default:= *"[^"]*"/+kubebuilder:default:="'"$1"'"/;}' ${GITHUB_WORKSPACE}/api/v1alpha1/hazelcast_types.go
+  sed -i '/Version of Management Center\./{n;s/\+kubebuilder:default:= *"[^"]*"/+kubebuilder:default:="'"$2"'"/;}' ${GITHUB_WORKSPACE}/api/v1alpha1/managementcenter_types.go
+  sed -i 's/HazelcastVersion = \".*\"/HazelcastVersion = \"'$1'\"/' ${GITHUB_WORKSPACE}/internal/naming/constants.go
+  sed -i 's/MCVersion = \".*\"/MCVersion = \"'$2'\"/' ${GITHUB_WORKSPACE}/internal/naming/constants.go
+}
+
 

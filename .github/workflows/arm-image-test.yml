@@ -81,7 +81,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('Dockerfile','main.go','api/**','controllers/**','internal/**','licenses/**','**/go.mod','**/go.sum') }}:14d
           platforms: linux/arm64
           labels: |
-            operator.image.revision=${{ github.event.pull_request.head.sha }}
+            operator.image.revision=${{ github.sha }}
 
       - name: Build Agent Image
         uses: docker/build-push-action@v6.7.0
@@ -95,7 +95,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('agent/Dockerfile','agent/main.go','agent/internal/**','agent/init/**','agent/sidecars/**') }}:14d
           platforms: linux/arm64
           labels: |
-            agent.image.revision=${{ github.event.pull_request.head.sha }}
+            agent.image.revision=${{ github.sha }}
 
   kind-e2e-tests:
     name: Run E2E tests

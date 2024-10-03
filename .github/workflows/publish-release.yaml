@@ -85,24 +85,16 @@ jobs:
           echo "AGENT_IMG_NAME=${AGENT_IMG_NAME}" >> $GITHUB_ENV
           echo "AGENT_IMG_NAME=${AGENT_IMG_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Get the Current Latest Tag
+      - name: Get the Current Operator and Agent Latest Tag
         id: get-current-latest-tag
         run: |
-          echo ${{ env.DEVOPS_GITHUB_TOKEN }} | gh auth login --with-token
-          token=$(curl --fail -L -s -X POST 'https://hub.docker.com/v2/users/login' \
-          -H 'Content-Type: application/json' \
-          --data-raw '{
-            "username": "${{ env.DOCKERHUB_USERNAME }}",
-            "password": "${{ env.DOCKERHUB_PASSWORD }}"
-          }'| jq -r '.token')
-
           CURRENT_OPERATOR_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${{ env.OPERATOR_REGISTRY_IMAGE }}/tags/?page_size=100" \
-          -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
+          | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
           echo "CURRENT_OPERATOR_LATEST_TAG=${CURRENT_OPERATOR_LATEST_TAG}" >> $GITHUB_ENV
           echo "CURRENT_OPERATOR_LATEST_TAG=${CURRENT_OPERATOR_LATEST_TAG}" >> $GITHUB_OUTPUT
           
           CURRENT_AGENT_LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${{ env.AGENT_REGISTRY_IMAGE }}/tags/?page_size=100" \
-          -H "Authorization: Bearer $token" | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
+          | jq -r '[.results[] | select(.name | test("\\d+\\.\\d+\\.\\d+")) | {name, last_updated}] | sort_by(.last_updated) | last.name')
           echo "CURRENT_AGENT_LATEST_TAG=${CURRENT_AGENT_LATEST_TAG}" >> $GITHUB_ENV
           echo "CURRENT_AGENT_LATEST_TAG=${CURRENT_AGENT_LATEST_TAG}" >> $GITHUB_OUTPUT
 

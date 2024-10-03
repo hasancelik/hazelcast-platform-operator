@@ -90,7 +90,10 @@ jobs:
     name: Get Image
     runs-on: ubicloud-standard-2
     outputs:
-      IMG: ${{ steps.get-image-tag.outputs.IMG }}
+      OPERATOR_IMG: ${{ steps.get-operator-image-tag.outputs.OPERATOR_IMG }}
+      AGENT_IMG: ${{ steps.get-agent-image-tag.outputs.AGENT_IMG }}
+      AGENT_REPO: ${{ steps.get-agent-image-tag.outputs.AGENT_REPO }}
+      AGENT_VERSION: ${{ steps.get-agent-image-tag.outputs.AGENT_VERSION }}
     steps:
       - uses: actions/checkout@v4
 
@@ -120,12 +123,21 @@ jobs:
           username: _json_key
           password: ${{ env.GKE_SA_KEY }}
 
-      - name: Generate Image Name
-        id: get-image-tag
+      - name: Generate Operator Image Name
+        id: get-operator-image-tag
         run: |
-          echo "IMG=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/$(uuidgen):5d" >> $GITHUB_OUTPUT
+          echo "OPERATOR_IMG=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/$(uuidgen)-operator:5d" >> $GITHUB_OUTPUT
 
-      - name: Build Image
+      - name: Generate Agent Image Name
+        id: get-agent-image-tag
+        run: |
+          AGENT_REPO="${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/$(uuidgen)-agent"
+          AGENT_VERSION="5d"
+          echo "AGENT_REPO=$AGENT_REPO" >> $GITHUB_OUTPUT
+          echo "AGENT_VERSION=$AGENT_VERSION" >> $GITHUB_OUTPUT
+          echo "AGENT_IMG=$AGENT_REPO:$AGENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Operator Image
         uses: docker/build-push-action@v6.7.0
         with:
           context: .
@@ -135,9 +147,24 @@ jobs:
             pardotID=dockerhub
           file: Dockerfile
           push: true
-          tags: ${{ steps.get-image-tag.outputs.IMG }}
+          tags: ${{ steps.get-operator-image-tag.outputs.OPERATOR_IMG }}
           cache-from: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('Dockerfile','main.go','api/**','controllers/**','internal/**','licenses/**','**/go.mod','**/go.sum') }}:14d
           cache-to: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('Dockerfile','main.go','api/**','controllers/**','internal/**','licenses/**','**/go.mod','**/go.sum') }}:14d
+          labels: |
+            operator.image.revision=${{ github.sha }}
+
+      - name: Build Agent Image
+        uses: docker/build-push-action@v6.7.0
+        with:
+          context: .
+          builder: ${{ steps.buildx.outputs.name }}
+          file: agent/Dockerfile
+          push: true
+          tags: ${{ steps.get-agent-image-tag.outputs.AGENT_IMG }}
+          cache-from: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('agent/Dockerfile','agent/main.go','agent/internal/**','agent/init/**','agent/sidecars/**') }}:14d
+          cache-to: type=registry,ref=${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GAR_PROJECT }}/${{ env.GAR_REPO }}/${{ hashFiles('agent/Dockerfile','agent/main.go','agent/internal/**','agent/init/**','agent/sidecars/**') }}:14d
+          labels: |
+            agent.image.revision=${{ github.sha }}
 
   gke-e2e-tests:
     name: Run e2e test on GKE
@@ -147,7 +174,9 @@ jobs:
       NAMESPACE: test-operator
       CLUSTER_NAME: ${{ needs.create-gke-cluster.outputs.CLUSTER_NAME }}
       RELEASE_NAME: hp-${{ github.run_id }}
-      IMG: ${{ needs.get-image.outputs.IMG }}
+      OPERATOR_IMG: ${{ needs.get-image.outputs.OPERATOR_IMG }}
+      AGENT_REPO: ${{ needs.get-image.outputs.AGENT_REPO }}
+      AGENT_VERSION: ${{ needs.get-image.outputs.AGENT_VERSION }}
       STORAGE_CLASS: standard-rwo
 
     steps:
@@ -199,7 +228,7 @@ jobs:
           kubectl config set-context --current --namespace=$NAMESPACE
 
           DEPLOY_NAME=${RELEASE_NAME}-hazelcast-platform-operator
-          make install-operator IMG=$IMG NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME
+          make install-operator IMG=$OPERATOR_IMG NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME
           kubectl rollout status deployment $DEPLOY_NAME
 
       - name: Create secrets and service accounts
@@ -226,7 +255,7 @@ jobs:
       - name: Run Hazelcast E2E tests at GKE
         id: e2e-test
         run: |
-          make test-e2e NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=gke STORAGE_CLASS=$STORAGE_CLASS
+          make test-e2e NAMESPACE=$NAMESPACE RELEASE_NAME=$RELEASE_NAME REPORT_SUFFIX=ee_01 WORKFLOW_ID=gke STORAGE_CLASS=$STORAGE_CLASS AGENT_REPO=$AGENT_REPO AGENT_VERSION=$AGENT_VERSION
 
       - name: Check if the operator pod has not restarted
         run: |
