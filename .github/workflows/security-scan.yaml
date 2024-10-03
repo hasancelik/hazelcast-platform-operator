@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 9 * * *"
 
+env:
+  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+
 jobs:
   operator-scan:
     name: Operator Scan
