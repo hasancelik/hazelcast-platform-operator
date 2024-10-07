@@ -401,7 +401,7 @@ jobs:
 
       - name: Run OpenSCAP Vulnerability Scan
         id: vulnerabilityScan
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ env.OPENSCAP_SCANHOST }}
           username: ec2-user
@@ -652,7 +652,7 @@ jobs:
             OPENSCAP_PRIVATE_KEY,CN/OPENSCAP_PRIVATE_KEY
 
       - name: Delete Test Image For Security Scan
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ env.OPENSCAP_SCANHOST }}
           username: ec2-user
