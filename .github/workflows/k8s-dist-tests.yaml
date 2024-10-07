@@ -29,6 +29,7 @@ permissions:
   pages: write
   id-token: write
   actions: write
+  pull-requests: write
 
 env:
   AWS_REGION: us-east-1
