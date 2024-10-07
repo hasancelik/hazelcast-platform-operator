@@ -21,6 +21,9 @@ jobs:
       run:
         shell: bash
     runs-on: ubicloud-standard-2
+    permissions:
+      contents: write
+      pull-requests: write
     environment:
       name: report
       url: ${{ env.REPORT_PAGE_URL }}/${{ inputs.WORKFLOW_ID }}
