@@ -106,7 +106,7 @@ jobs:
 
       - name: Build Operator Image
         if: matrix.image == 'operator'
-        uses: docker/build-push-action@v6.7.0
+        uses: docker/build-push-action@v6.9.0
         id: build_operator
         with:
           context: .
@@ -124,7 +124,7 @@ jobs:
 
       - name: Build Agent Image
         if: matrix.image == 'agent'
-        uses: docker/build-push-action@v6.7.0
+        uses: docker/build-push-action@v6.9.0
         id: build_agent
         with:
           context: .

@@ -180,7 +180,7 @@ jobs:
           echo "AGENT_IMG=$AGENT_REPO:$AGENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Build Operator Image
-        uses: docker/build-push-action@v6.7.0
+        uses: docker/build-push-action@v6.9.0
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
@@ -196,7 +196,7 @@ jobs:
             operator.image.revision=${{ github.sha }}
 
       - name: Build Agent Image
-        uses: docker/build-push-action@v6.7.0
+        uses: docker/build-push-action@v6.9.0
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
