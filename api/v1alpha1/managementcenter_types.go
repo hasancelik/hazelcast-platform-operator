@@ -73,6 +73,11 @@ type ManagementCenterSpec struct {
 	// ManagementCenter Kubernetes resource labels
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Env configuration of environment variables
+	// +optional
+	// +kubebuilder:validation:XValidation:message="Environment variable name cannot be empty.",rule="self.all(env, env.name != '')"
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 func (s *ManagementCenterSpec) GetLicenseKeySecretName() string {

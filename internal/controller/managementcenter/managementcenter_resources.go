@@ -526,6 +526,8 @@ func env(ctx context.Context, mc *hazelcastv1alpha1.ManagementCenter, c client.C
 		},
 	)
 
+	envs = append(envs, mc.Spec.Env...)
+
 	return envs
 }
 

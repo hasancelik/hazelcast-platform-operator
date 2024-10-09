@@ -895,4 +895,55 @@ var _ = Describe("ManagementCenter CR", func() {
 			Expect(actualMC.Spec.HazelcastClusters[1].TLS).Should(BeNil())
 		})
 	})
+
+	Context("with env variables", func() {
+		When("configured", func() {
+			It("should set them correctly", func() {
+				spec := test.ManagementCenterSpec(defaultMcSpecValues())
+				spec.Env = []corev1.EnvVar{
+					{
+						Name:  "ENV",
+						Value: "VAL",
+					},
+				}
+				mc := &hazelcastv1alpha1.ManagementCenter{
+					ObjectMeta: randomObjectMeta(namespace),
+					Spec:       spec,
+				}
+
+				Create(mc)
+				actualMC := EnsureStatusIsPending(mc)
+
+				Expect(actualMC.Spec.Env[0].Name).Should(Equal("ENV"))
+				Expect(actualMC.Spec.Env[0].Value).Should(Equal("VAL"))
+
+				ss := getStatefulSet(mc)
+
+				var envs []string
+				for _, e := range ss.Spec.Template.Spec.Containers[0].Env {
+					envs = append(envs, e.Name)
+				}
+				Expect(envs).Should(ContainElement("ENV"))
+			})
+		})
+		When("it is configured with empty env var name", func() {
+			It("should give an error", func() {
+				spec := test.ManagementCenterSpec(defaultMcSpecValues())
+				spec.Env = []corev1.EnvVar{
+					{
+						Name:  "",
+						Value: "VAL",
+					},
+				}
+				mc := &hazelcastv1alpha1.ManagementCenter{
+					ObjectMeta: randomObjectMeta(namespace),
+					Spec:       spec,
+				}
+
+				err := k8sClient.Create(context.Background(), mc)
+				Expect(err).ShouldNot(BeNil())
+				Expect(err.Error()).Should(ContainSubstring("Environment variable name cannot be empty"))
+			})
+		})
+	})
 })
