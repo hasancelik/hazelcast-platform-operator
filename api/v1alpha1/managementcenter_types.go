@@ -347,6 +347,14 @@ type ManagementCenter struct {
 	Status ManagementCenterStatus `json:"status,omitempty"`
 }
 
+func (mc *ManagementCenter) GetSpecAnnotations() map[string]string {
+	return mc.Spec.Annotations
+}
+
+func (mc *ManagementCenter) GetSpecLabels() map[string]string {
+	return mc.Spec.Labels
+}
+
 func (mc *ManagementCenter) DockerImage() string {
 	return fmt.Sprintf("%s:%s", mc.Spec.Repository, mc.Spec.Version)
 }

@@ -40,7 +40,6 @@ import (
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
-	"github.com/hazelcast/hazelcast-platform-operator/internal/platform"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
 	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/tls"
@@ -189,7 +188,7 @@ func (r *HazelcastReconciler) reconcileClusterRole(ctx context.Context, h *hazel
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        h.ClusterScopedName(),
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 	}
@@ -216,7 +215,7 @@ func (r *HazelcastReconciler) reconcileRole(ctx context.Context, h *hazelcastv1a
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        h.Name,
 			Namespace:   h.Namespace,
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 	}
@@ -265,7 +264,7 @@ func (r *HazelcastReconciler) reconcileServiceAccount(ctx context.Context, h *ha
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceAccountName(h),
 			Namespace:   h.Namespace,
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 	}
@@ -289,7 +288,7 @@ func (r *HazelcastReconciler) reconcileClusterRoleBinding(ctx context.Context, h
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        csName,
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 	}
@@ -321,7 +320,7 @@ func (r *HazelcastReconciler) reconcileRoleBinding(ctx context.Context, h *hazel
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        h.Name,
 			Namespace:   h.Namespace,
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 	}
@@ -355,7 +354,7 @@ func (r *HazelcastReconciler) reconcileRoleBinding(ctx context.Context, h *hazel
 
 func (r *HazelcastReconciler) reconcileService(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
 	service := &corev1.Service{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Spec: corev1.ServiceSpec{
 			Selector: util.Labels(h),
 		},
@@ -443,7 +442,7 @@ func wanService(w hazelcastv1alpha1.WANConfig, h *hazelcastv1alpha1.Hazelcast) *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        h.Name + "-" + w.Name,
 			Namespace:   h.Namespace,
-			Labels:      labels(h),
+			Labels:      controller.Labels(h, n.Hazelcast),
 			Annotations: h.Spec.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
@@ -810,7 +809,7 @@ func servicePerPodSelector(i int, h *hazelcastv1alpha1.Hazelcast) map[string]str
 }
 
 func servicePerPodLabels(h *hazelcastv1alpha1.Hazelcast) map[string]string {
-	ls := labels(h)
+	ls := controller.Labels(h, n.Hazelcast)
 	ls[n.ServicePerPodLabelName] = n.LabelValueTrue
 	return ls
 }
@@ -923,7 +922,7 @@ func hazelcastEndpointFromService(nn types.NamespacedName, hz *hazelcastv1alpha1
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        nn.Name,
 			Namespace:   nn.Namespace,
-			Labels:      labels(hz),
+			Labels:      controller.Labels(hz, n.Hazelcast),
 			Annotations: hz.Spec.Annotations,
 		},
 		Spec: hazelcastv1alpha1.HazelcastEndpointSpec{
@@ -936,7 +935,7 @@ func hazelcastEndpointFromService(nn types.NamespacedName, hz *hazelcastv1alpha1
 
 func (r *HazelcastReconciler) reconcileInitContainerConfig(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Data:       make(map[string]string),
 	}
 	cm.Name = cm.Name + n.InitSuffix
@@ -962,7 +961,7 @@ func (r *HazelcastReconciler) reconcileInitContainerConfig(ctx context.Context, 
 
 func (r *HazelcastReconciler) reconcileSecret(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
 	scrt := &corev1.Secret{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Data:       make(map[string][]byte),
 	}
 
@@ -1200,7 +1199,7 @@ func restoreLocalInitContainer(h *hazelcastv1alpha1.Hazelcast, conf hazelcastv1a
 func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
 	var terminationGracePeriodSeconds int64 = 600
 	sts := &appsv1.StatefulSet{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: util.Labels(h),
@@ -1209,12 +1208,12 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels(h),
+					Labels:      controller.Labels(h, n.Hazelcast),
 					Annotations: h.Spec.Annotations,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: serviceAccountName(h),
-					SecurityContext:    podSecurityContext(),
+					SecurityContext:    controller.PodSecurityContext(),
 					Containers: []corev1.Container{{
 						Name: n.Hazelcast,
 						LivenessProbe: &corev1.Probe{
@@ -1245,7 +1244,7 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 							SuccessThreshold:    1,
 							FailureThreshold:    10,
 						},
-						SecurityContext: containerSecurityContext(),
+						SecurityContext: controller.ContainerSecurityContext(),
 					}},
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 				},
@@ -1327,7 +1326,7 @@ func persistentVolumeClaims(h *hazelcastv1alpha1.Hazelcast, pvcName string) []co
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        pvcName,
 				Namespace:   h.Namespace,
-				Labels:      labels(h),
+				Labels:      controller.Labels(h, n.Hazelcast),
 				Annotations: h.Spec.Annotations,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
@@ -1346,7 +1345,7 @@ func persistentVolumeClaims(h *hazelcastv1alpha1.Hazelcast, pvcName string) []co
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        n.CPPersistenceVolumeName,
 				Namespace:   h.Namespace,
-				Labels:      labels(h),
+				Labels:      controller.Labels(h, n.Hazelcast),
 				Annotations: h.Spec.Annotations,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
@@ -1370,7 +1369,7 @@ func localDevicePersistentVolumeClaim(h *hazelcastv1alpha1.Hazelcast) []corev1.P
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      localDeviceConfig.Name,
 				Namespace: h.Namespace,
-				Labels:    labels(h),
+				Labels:    controller.Labels(h, n.Hazelcast),
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: localDeviceConfig.PVC.AccessModes,
@@ -1438,7 +1437,7 @@ func sidecarContainer(h *hazelcastv1alpha1.Hazelcast) corev1.Container {
 				Value: path.Join(n.MTLSCertPath, "tls.key"),
 			},
 		},
-		SecurityContext: containerSecurityContext(),
+		SecurityContext: controller.ContainerSecurityContext(),
 	}
 }
 
@@ -1464,37 +1463,6 @@ func hazelcastContainerWanPorts(h *hazelcastv1alpha1.Hazelcast) []corev1.Contain
 	return c
 }
 
-func podSecurityContext() *corev1.PodSecurityContext {
-	// Openshift assigns user and fsgroup ids itself
-	if platform.GetType() == platform.OpenShift {
-		return &corev1.PodSecurityContext{
-			RunAsNonRoot: ptr.To(true),
-		}
-	}
-
-	var u int64 = 65534
-	return &corev1.PodSecurityContext{
-		FSGroup:      &u,
-		RunAsNonRoot: ptr.To(true),
-		// Have to give userID otherwise Kubelet fails to create the pod
-		// saying userID must be numberic, Hazelcast image's default userID is "hazelcast"
-		// UBI images prohibits all numeric userIDs https://access.redhat.com/solutions/3103631
-		RunAsUser: &u,
-	}
-}
-
-func containerSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		RunAsNonRoot:             ptr.To(true),
-		Privileged:               ptr.To(false),
-		ReadOnlyRootFilesystem:   ptr.To(true),
-		AllowPrivilegeEscalation: ptr.To(false),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
-	}
-}
-
 func initContainer(h *hazelcastv1alpha1.Hazelcast, pvcName string) (corev1.Container, error) {
 	c := corev1.Container{
 		Name:  n.InitContainer,
@@ -1517,7 +1485,7 @@ func initContainer(h *hazelcastv1alpha1.Hazelcast, pvcName string) (corev1.Conta
 		},
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: "File",
-		SecurityContext:          containerSecurityContext(),
+		SecurityContext:          controller.ContainerSecurityContext(),
 		ImagePullPolicy:          corev1.PullIfNotPresent,
 		VolumeMounts: []corev1.VolumeMount{
 
@@ -2074,31 +2042,6 @@ func hazelcastContainerPorts(h *hazelcastv1alpha1.Hazelcast) []corev1.ContainerP
 
 	ports = append(ports, hazelcastContainerWanPorts(h)...)
 	return ports
-}
-
-func metadata(h *hazelcastv1alpha1.Hazelcast) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        h.Name,
-		Namespace:   h.Namespace,
-		Labels:      labels(h),
-		Annotations: h.Spec.Annotations,
-	}
-}
-
-func labels(h *hazelcastv1alpha1.Hazelcast) map[string]string {
-	l := make(map[string]string)
-
-	// copy user labels
-	for name, value := range h.Spec.Labels {
-		l[name] = value
-	}
-
-	// make sure we overwrite user labels
-	l[n.ApplicationNameLabel] = n.Hazelcast
-	l[n.ApplicationInstanceNameLabel] = h.GetName()
-	l[n.ApplicationManagedByLabel] = n.OperatorName
-
-	return l
 }
 
 func serviceAccountName(h *hazelcastv1alpha1.Hazelcast) string {

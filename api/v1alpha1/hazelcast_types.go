@@ -1427,6 +1427,14 @@ type Hazelcast struct {
 	Status HazelcastStatus `json:"status,omitempty"`
 }
 
+func (h *Hazelcast) GetSpecAnnotations() map[string]string {
+	return h.Spec.Annotations
+}
+
+func (h *Hazelcast) GetSpecLabels() map[string]string {
+	return h.Spec.Labels
+}
+
 func (h *Hazelcast) DockerImage() string {
 	return fmt.Sprintf("%s:%s", h.Spec.Repository, h.Spec.Version)
 }

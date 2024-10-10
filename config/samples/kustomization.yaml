@@ -17,4 +17,5 @@ resources:
 - _v1alpha1_wansync.yaml
 - _v1alpha1_usercodenamespace.yaml
 - _v1alpha1_vectorcollection.yaml
+- v1alpha1_flow.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -112,6 +112,11 @@ type PhoneHomeData struct {
 	TieredStorage                 TieredStorage          `json:"ts"`
 	CPSubsystem                   CPSubsystem            `json:"cp"`
 	UserCodeNamespaces            UserCodeNamespaces     `json:"ucn"`
+	Flow                          Flow                   `json:"f"`
+}
+
+type Flow struct {
+	Count int `json:"c"`
 }
 
 type UserCodeNamespaces struct {
@@ -237,6 +242,7 @@ func newPhoneHomeData(cl client.Client, opInfo *OperatorInfo) PhoneHomeData {
 	phd.fillSnapshotMetrics(cl)
 	phd.fillTieredStorageMetrics(cl)
 	phd.fillUCNMetrics(cl)
+	phd.fillFlowMetrics(cl)
 	return phd
 }
 
@@ -467,6 +473,16 @@ func (phm *PhoneHomeData) fillMCMetrics(cl client.Client) {
 		phm.McExternalConnectivity.addUsageMetrics(mc.Spec.ExternalConnectivity)
 	}
 	phm.CreatedMCcount = createdMCCount
+}
+
+func (phm *PhoneHomeData) fillFlowMetrics(cl client.Client) {
+	fl := &hazelcastv1alpha1.FlowList{}
+	err := cl.List(context.Background(), fl, listOptions()...)
+	if err != nil {
+		return
+	}
+
+	phm.Flow.Count = len(fl.Items)
 }
 
 func (mec *McExternalConnectivity) addUsageMetrics(ec *hazelcastv1alpha1.ExternalConnectivityConfiguration) {

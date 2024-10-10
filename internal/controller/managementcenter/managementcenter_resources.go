@@ -17,11 +17,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/platform"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/tls"
@@ -53,9 +53,9 @@ func (r *ManagementCenterReconciler) executeFinalizer(ctx context.Context, mc *h
 
 func (r *ManagementCenterReconciler) reconcileService(ctx context.Context, mc *hazelcastv1alpha1.ManagementCenter, logger logr.Logger) error {
 	service := &corev1.Service{
-		ObjectMeta: metadata(mc),
+		ObjectMeta: controller.Metadata(mc, n.ManagementCenter),
 		Spec: corev1.ServiceSpec{
-			Selector: selectorLabels(mc),
+			Selector: controller.SelectorLabels(mc, n.ManagementCenter),
 		},
 	}
 
@@ -66,7 +66,7 @@ func (r *ManagementCenterReconciler) reconcileService(ctx context.Context, mc *h
 
 	opResult, err := util.CreateOrUpdateForce(ctx, r.Client, service, func() error {
 		service.Spec.Type = mc.Spec.ExternalConnectivity.ManagementCenterServiceType()
-		mcPorts := []corev1.ServicePort{httpPort(), httpsPort()}
+		mcPorts := []corev1.ServicePort{controller.HTTPPort(8080, n.MancenterPort), controller.HTTPSPort(443, n.MancenterPort)}
 		service.Spec.Ports = util.EnrichServiceNodePorts(mcPorts, service.Spec.Ports)
 		return nil
 	})
@@ -78,7 +78,7 @@ func (r *ManagementCenterReconciler) reconcileService(ctx context.Context, mc *h
 
 func (r *ManagementCenterReconciler) reconcileIngress(ctx context.Context, mc *hazelcastv1alpha1.ManagementCenter, logger logr.Logger) error {
 	ingress := &networkingv1.Ingress{
-		ObjectMeta: metadata(mc),
+		ObjectMeta: controller.Metadata(mc, n.ManagementCenter),
 		Spec:       networkingv1.IngressSpec{},
 	}
 
@@ -112,9 +112,9 @@ func (r *ManagementCenterReconciler) reconcileIngress(ctx context.Context, mc *h
 								PathType: &[]networkingv1.PathType{networkingv1.PathTypePrefix}[0],
 								Backend: networkingv1.IngressBackend{
 									Service: &networkingv1.IngressServiceBackend{
-										Name: metadata(mc).Name,
+										Name: controller.Metadata(mc, n.ManagementCenter).Name,
 										Port: networkingv1.ServiceBackendPort{
-											Name: httpPort().Name,
+											Name: controller.HTTPPort(8080, n.MancenterPort).Name,
 										},
 									},
 								},
@@ -138,7 +138,7 @@ func (r *ManagementCenterReconciler) reconcileRoute(ctx context.Context, mc *haz
 	}
 
 	route := &routev1.Route{
-		ObjectMeta: metadata(mc),
+		ObjectMeta: controller.Metadata(mc, n.ManagementCenter),
 		Spec:       routev1.RouteSpec{},
 	}
 
@@ -163,7 +163,7 @@ func (r *ManagementCenterReconciler) reconcileRoute(ctx context.Context, mc *haz
 			Host: mc.Spec.ExternalConnectivity.Route.Hostname,
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				Name: metadata(mc).Name,
+				Name: controller.Metadata(mc, n.ManagementCenter).Name,
 			},
 			Port: &routev1.RoutePort{
 				TargetPort: intstr.FromString("http"),
@@ -177,69 +177,18 @@ func (r *ManagementCenterReconciler) reconcileRoute(ctx context.Context, mc *haz
 	return err
 }
 
-func metadata(mc *hazelcastv1alpha1.ManagementCenter) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        mc.Name,
-		Namespace:   mc.Namespace,
-		Labels:      labels(mc),
-		Annotations: mc.Spec.Annotations,
-	}
-}
-
-func selectorLabels(mc *hazelcastv1alpha1.ManagementCenter) map[string]string {
-	return map[string]string{
-		n.ApplicationNameLabel:         n.ManagementCenter,
-		n.ApplicationInstanceNameLabel: mc.Name,
-		n.ApplicationManagedByLabel:    n.OperatorName,
-	}
-}
-
-func labels(mc *hazelcastv1alpha1.ManagementCenter) map[string]string {
-	l := make(map[string]string)
-
-	// copy user labels
-	for name, value := range mc.Spec.Labels {
-		l[name] = value
-	}
-
-	// make sure we overwrite user labels
-	l[n.ApplicationNameLabel] = n.ManagementCenter
-	l[n.ApplicationInstanceNameLabel] = mc.Name
-	l[n.ApplicationManagedByLabel] = n.OperatorName
-
-	return l
-}
-
-func httpPort() corev1.ServicePort {
-	return corev1.ServicePort{
-		Name:       "http",
-		Protocol:   corev1.ProtocolTCP,
-		Port:       8080,
-		TargetPort: intstr.FromString(n.MancenterPort),
-	}
-}
-
-func httpsPort() corev1.ServicePort {
-	return corev1.ServicePort{
-		Name:       "https",
-		Protocol:   corev1.ProtocolTCP,
-		Port:       443,
-		TargetPort: intstr.FromString(n.MancenterPort),
-	}
-}
-
 func (r *ManagementCenterReconciler) reconcileStatefulset(ctx context.Context, mc *hazelcastv1alpha1.ManagementCenter, logger logr.Logger) error {
 	sts := &appsv1.StatefulSet{
-		ObjectMeta: metadata(mc),
+		ObjectMeta: controller.Metadata(mc, n.ManagementCenter),
 		Spec: appsv1.StatefulSetSpec{
 			// Management Center StatefulSet size is always 1
 			Replicas: &[]int32{1}[0],
 			Selector: &metav1.LabelSelector{
-				MatchLabels: selectorLabels(mc),
+				MatchLabels: controller.SelectorLabels(mc, n.ManagementCenter),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels(mc),
+					Labels: controller.Labels(mc, n.ManagementCenter),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
@@ -253,7 +202,7 @@ func (r *ManagementCenterReconciler) reconcileStatefulset(ctx context.Context, m
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
-									Port:   intstr.FromInt(8081),
+									Port:   intstr.FromInt32(8081),
 									Scheme: corev1.URISchemeHTTP,
 								},
 							},
@@ -266,7 +215,7 @@ func (r *ManagementCenterReconciler) reconcileStatefulset(ctx context.Context, m
 						ReadinessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								TCPSocket: &corev1.TCPSocketAction{
-									Port: intstr.FromInt(8080),
+									Port: intstr.FromInt32(8080),
 								},
 							},
 							InitialDelaySeconds: 10,
@@ -275,9 +224,9 @@ func (r *ManagementCenterReconciler) reconcileStatefulset(ctx context.Context, m
 							SuccessThreshold:    1,
 							FailureThreshold:    10,
 						},
-						SecurityContext: containerSecurityContext(),
+						SecurityContext: controller.ContainerSecurityContext(),
 					}},
-					SecurityContext: podSecurityContext(),
+					SecurityContext: controller.PodSecurityContext(),
 				},
 			},
 		},
@@ -341,7 +290,7 @@ func getRootPath(mc *hazelcastv1alpha1.ManagementCenter) string {
 
 func (r *ManagementCenterReconciler) reconcileSecret(ctx context.Context, mc *hazelcastv1alpha1.ManagementCenter, logger logr.Logger) error {
 	secret := &corev1.Secret{
-		ObjectMeta: metadata(mc),
+		ObjectMeta: controller.Metadata(mc, n.ManagementCenter),
 	}
 
 	err := controllerutil.SetControllerReference(mc, secret, r.Scheme)
@@ -377,39 +326,6 @@ func (r *ManagementCenterReconciler) reconcileSecret(ctx context.Context, mc *ha
 	return err
 }
 
-func podSecurityContext() *corev1.PodSecurityContext {
-	// Openshift assigns user and fsgroup ids itself
-	if platform.GetType() == platform.OpenShift {
-		return &corev1.PodSecurityContext{
-			RunAsNonRoot: ptr.To(true),
-		}
-	}
-
-	var u int64 = 65534
-	return &corev1.PodSecurityContext{
-		RunAsNonRoot: ptr.To(true),
-		// Do not have to give User and FSGroup IDs because MC image's default user is 1001 so kubelet
-		// does not complain when RunAsNonRoot is true
-		// To keep it consistent with Hazelcast, we are adding following
-		RunAsUser: &u,
-		FSGroup:   &u,
-	}
-}
-
-func containerSecurityContext() *corev1.SecurityContext {
-	sec := &corev1.SecurityContext{
-		RunAsNonRoot:             ptr.To(true),
-		Privileged:               ptr.To(false),
-		ReadOnlyRootFilesystem:   ptr.To(true),
-		AllowPrivilegeEscalation: ptr.To(false),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
-	}
-
-	return sec
-}
-
 func persistentVolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      n.MancenterStorageName,
@@ -429,7 +345,7 @@ func persistentVolumeClaim(mc *hazelcastv1alpha1.ManagementCenter) corev1.Persis
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        n.MancenterStorageName,
 			Namespace:   mc.Namespace,
-			Labels:      labels(mc),
+			Labels:      controller.Labels(mc, n.ManagementCenter),
 			Annotations: mc.Spec.Annotations,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{

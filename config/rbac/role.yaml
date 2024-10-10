@@ -91,6 +91,7 @@ rules:
     resources:
       - caches
       - cronhotbackups
+      - flows
       - hazelcastendpoints
       - hazelcasts
       - hotbackups
@@ -118,6 +119,7 @@ rules:
     resources:
       - caches/finalizers
       - cronhotbackups/finalizers
+      - flows/finalizers
       - hazelcastendpoints/finalizers
       - hazelcasts/finalizers
       - hotbackups/finalizers
@@ -139,6 +141,7 @@ rules:
     resources:
       - caches/status
       - cronhotbackups/status
+      - flows/status
       - hazelcastendpoints/status
       - hazelcasts/status
       - hotbackups/status

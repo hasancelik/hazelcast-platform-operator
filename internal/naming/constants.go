@@ -51,10 +51,16 @@ const (
 	ManagementCenter = "management-center"
 	// Mancenter MC short name
 	Mancenter = "mancenter"
-	// MancenterPort MC short name
+	// MancenterPort MC port name
 	MancenterPort = Mancenter + "-port"
 	// MancenterStorageName storage name for MC
 	MancenterStorageName = Mancenter + "-storage"
+
+	// Flow application name
+	FlowApplicationName = "flow"
+	// Flow port name
+	FlowPortName = FlowApplicationName + "-port"
+	FlowPort     = 9021
 
 	// PVCName is the name the Persistence Volume Claim used in Persistence configuration.
 	PVCName                     = "persistence"

@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/flow"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/hazelcast"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/managementcenter"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
@@ -300,6 +301,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorCollection")
 		os.Exit(1)
 	}
+	if err = flow.NewFlowReconciler(
+		mgr.GetClient(),
+		controllerLogger.WithName("Flow"),
+		mgr.GetScheme(),
+		phoneHomeTrigger,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Flow")
+		os.Exit(1)
+	}
 
 	setupWithWebhookOrDie(mgr)
 
@@ -402,6 +412,10 @@ func setupWithWebhookOrDie(mgr ctrl.Manager) {
 	}
 	if err := (&hazelcastcomv1alpha1.VectorCollection{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "VectorCollection")
+		os.Exit(1)
+	}
+	if err := (&hazelcastcomv1alpha1.Flow{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Flow")
 		os.Exit(1)
 	}
 }

@@ -30,7 +30,30 @@ webhooks:
         resources:
           - cronhotbackups
     sideEffects: None
-    namespaceSelector: 
+    namespaceSelector:
+      {{- include "watched-namespaces.labelSelector" . | nindent 6 }}
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      caBundle: {{ $ca.Cert | b64enc }}
+      service:
+        name: {{ $fullname }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-hazelcast-com-v1alpha1-flow
+    failurePolicy: Fail
+    name: vflow.kb.io
+    rules:
+      - apiGroups:
+          - hazelcast.com
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - flows
+    sideEffects: None
+    namespaceSelector:
       {{- include "watched-namespaces.labelSelector" . | nindent 6 }}
   - admissionReviewVersions:
       - v1

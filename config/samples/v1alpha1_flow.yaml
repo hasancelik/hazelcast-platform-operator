@@ -1,0 +1,34 @@
+apiVersion: hazelcast.com/v1alpha1
+kind: Flow
+metadata:
+  labels:
+    app.kubernetes.io/name: hazelcast-platform-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: flow
+spec:
+  size: 3
+  repository: 'quay.io/hazelcast_cloud/hazelcast-flow-internal'
+  version: next
+  imagePullSecrets:
+  - name: hazelcast-cloud-hazelcast-connect-demo-pull-secret
+  licenseKeySecretName: flow-mc-license-key
+  externalConnectivity:
+    ingress:
+      hostname: ""
+      ingressClassName: nginx
+      path: "/"
+      annotations:
+        kubernetes.io/ingress.class: "nginx"
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+        nginx.ingress.kubernetes.io/enable-opentelemetry: "true"
+  database:
+    host: "flow-postgresql"
+    secretName: flow-db-secret
+  env:
+  - name: OPTIONS
+    value: >
+      --flow.analytics.persistRemoteCallResponses=true
+      --flow.stream-server.enabled=false
+      --flow.analytics.persistResults=false
+      --flow.toggles.dashboard-enabled=true
+      --flow.config.custom.managementCenterUrl=http://34.140.160.158/mc

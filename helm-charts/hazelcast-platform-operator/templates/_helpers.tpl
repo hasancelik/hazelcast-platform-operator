@@ -207,6 +207,7 @@ Rules needed for operator watched namespaces
   resources:
   - caches
   - cronhotbackups
+  - flows
   - hazelcastendpoints
   - hazelcasts
   - hotbackups
@@ -235,6 +236,7 @@ Rules needed for operator watched namespaces
   resources:
   - caches/finalizers
   - cronhotbackups/finalizers
+  - flows/finalizers
   - hazelcastendpoints/finalizers
   - hazelcasts/finalizers
   - hotbackups/finalizers
@@ -257,6 +259,7 @@ Rules needed for operator watched namespaces
   resources:
   - caches/status
   - cronhotbackups/status
+  - flows/status
   - hazelcastendpoints/status
   - hazelcasts/status
   - hotbackups/status

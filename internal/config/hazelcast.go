@@ -30,6 +30,7 @@ type Hazelcast struct {
 	LocalDevice              map[string]LocalDevice              `yaml:"local-device,omitempty"`
 	CPSubsystem              CPSubsystem                         `yaml:"cp-subsystem,omitempty"`
 	UserCodeNamespaces       UserCodeNamespaces                  `yaml:"user-code-namespaces,omitempty"`
+	Network                  Network                             `yaml:"network,omitempty"`
 }
 
 type ManagementCenterConfig struct {

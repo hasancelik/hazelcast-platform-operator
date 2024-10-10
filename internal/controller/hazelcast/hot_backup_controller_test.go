@@ -26,6 +26,7 @@ import (
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/kubeclient"
@@ -55,7 +56,7 @@ func TestHotBackupReconciler_shouldBeSuccessful(t *testing.T) {
 		t.Errorf("Error forming config")
 	}
 	cm := &corev1.Secret{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Data:       make(map[string][]byte),
 	}
 	cm.Data["hazelcast.yaml"] = cfg

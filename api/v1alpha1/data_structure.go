@@ -3,6 +3,12 @@ package v1alpha1
 import "sigs.k8s.io/controller-runtime/pkg/client"
 
 // +k8s:deepcopy-gen=false
+type SpecAnnotatorLabeler interface {
+	GetSpecAnnotations() map[string]string
+	GetSpecLabels() map[string]string
+}
+
+// +k8s:deepcopy-gen=false
 type CRLister interface {
 	GetItems() []client.Object
 }

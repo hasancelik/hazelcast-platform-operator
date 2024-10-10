@@ -16,6 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/hazelcast/hazelcast-platform-operator/internal/config"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/faketest"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/protocol/codec"
@@ -59,7 +60,7 @@ func Test_configBaseDirShouldNotChangeWhenExists(t *testing.T) {
 		t.Errorf("Error forming config")
 	}
 	cm := &corev1.Secret{
-		ObjectMeta: metadata(h),
+		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Data:       make(map[string][]byte),
 	}
 	mtlsSec := &corev1.Secret{
