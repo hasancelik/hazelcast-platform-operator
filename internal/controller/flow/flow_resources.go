@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
@@ -314,18 +315,27 @@ func (r *FlowReconciler) reconcileStatefulSet(ctx context.Context, flow *hazelca
 
 func (r *FlowReconciler) env(ctx context.Context, flow *hazelcastv1alpha1.Flow) ([]corev1.EnvVar, error) {
 	var envs []corev1.EnvVar
-	flowAdditionalOpts := "--flow.hazelcast.configYamlPath=/data/hazelcast/hazelcast.yaml --flow.schema.server.clustered=true"
+	options := []string{
+		"--flow.hazelcast.configYamlPath=/data/hazelcast/hazelcast.yaml",
+		"--flow.schema.server.clustered=true",
+	}
 	dbOptions, err := r.flowDBOptions(ctx, flow)
 	if err != nil {
 		return envs, err
 	}
+	options = append(options, dbOptions)
+
 	for _, envVar := range flow.Spec.Env {
 		if envVar.Name == "OPTIONS" {
-			envVar.Value = fmt.Sprintf("%s %s %s", flowAdditionalOpts, dbOptions, envVar.Value)
+			options = append(options, envVar.Value)
+		} else {
+			envs = append(envs, envVar)
 		}
-		envs = append(envs, envVar)
 	}
 	envs = append(envs, corev1.EnvVar{
+		Name:  "OPTIONS",
+		Value: strings.Join(options, " "),
+	}, corev1.EnvVar{
 		Name: mcLicenseKey,
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
@@ -345,8 +355,12 @@ func (r *FlowReconciler) flowDBOptions(ctx context.Context, flow *hazelcastv1alp
 	if err != nil {
 		return "", nil
 	}
-	return fmt.Sprintf("--flow.db.username=%s --flow.db.password=%s --flow.db.host=%s",
-		string(s.Data["username"]), string(s.Data["password"]), flow.Spec.Database.Host), nil
+	dbName := "flow"
+	if s.Data["database"] != nil {
+		dbName = string(s.Data["database"])
+	}
+	return fmt.Sprintf("--flow.db.username=%s --flow.db.password=%s --flow.db.host=%s --flow.db.database=%s",
+		string(s.Data["username"]), string(s.Data["password"]), flow.Spec.Database.Host, dbName), nil
 }
 
 func (r *FlowReconciler) reconcileServiceAccount(ctx context.Context, flow *hazelcastv1alpha1.Flow, logger logr.Logger) error {

@@ -24,6 +24,7 @@ func newFlowValidator(o client.Object) flowValidator {
 func ValidateFlowSpec(f *Flow) error {
 	v := newFlowValidator(f)
 	v.validateSpecCurrent(f)
+	v.validateLicense(f)
 	v.validateSpecUpdate(f)
 	return v.Err()
 }
@@ -54,6 +55,24 @@ func (v *flowValidator) validateSpecCurrent(f *Flow) {
 		// we care only about not found error
 		v.NotFound(Path("spec", "database", "secretName"), "Database Secret not found")
 		return
+	}
+}
+
+func (v *flowValidator) validateLicense(f *Flow) {
+	// make sure secret exists
+	if f.Spec.LicenseKeySecretName != "" {
+		secretName := types.NamespacedName{
+			Name:      f.Spec.LicenseKeySecretName,
+			Namespace: f.Namespace,
+		}
+
+		var secret corev1.Secret
+		err := kubeclient.Get(context.Background(), secretName, &secret)
+		if kerrors.IsNotFound(err) {
+			// we care only about not found error
+			v.NotFound(Path("spec", "licenseKeySecretName"), "Hazelcast Enterprise licenseKeySecret is not found")
+			return
+		}
 	}
 }
 

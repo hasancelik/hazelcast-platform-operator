@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	hazelcastcomv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
+	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/flow"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/hazelcast"
 	"github.com/hazelcast/hazelcast-platform-operator/internal/controller/managementcenter"
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
@@ -156,6 +157,13 @@ var _ = BeforeSuite(func() {
 		cs,
 		ssm,
 	).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = flow.NewFlowReconciler(
+		k8sManager.GetClient(),
+		controllerLogger.WithName("Flow"),
+		k8sManager.GetScheme(),
+		nil).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&hazelcastcomv1alpha1.Hazelcast{}).SetupWebhookWithManager(k8sManager)
