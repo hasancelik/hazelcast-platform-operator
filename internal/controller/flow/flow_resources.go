@@ -188,7 +188,6 @@ func (r *FlowReconciler) reconcileStatefulSet(ctx context.Context, flow *hazelca
 		ObjectMeta: controller.Metadata(flow, n.FlowApplicationName),
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName:         flow.Name,
-			Replicas:            flow.Spec.Size,
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: controller.SelectorLabels(flow, n.FlowApplicationName),
@@ -289,6 +288,7 @@ func (r *FlowReconciler) reconcileStatefulSet(ctx context.Context, flow *hazelca
 	}
 
 	opResult, err := util.CreateOrUpdateForce(ctx, r.Client, sts, func() error {
+		sts.Spec.Replicas = flow.Spec.Size
 		sts.Spec.Template.Spec.ImagePullSecrets = flow.Spec.ImagePullSecrets
 		sts.Spec.Template.Spec.Containers[0].Image = flow.DockerImage()
 		sts.Spec.Template.Spec.Containers[0].Env, err = r.env(ctx, flow)

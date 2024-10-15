@@ -6,8 +6,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	k8scl "sigs.k8s.io/controller-runtime/pkg/client"
 
 	hazelcastv1alpha1 "github.com/hazelcast/hazelcast-platform-operator/api/v1alpha1"
 	n "github.com/hazelcast/hazelcast-platform-operator/internal/naming"
@@ -109,6 +112,57 @@ var _ = Describe("Flow CR", func() {
 				ContainSubstring("--flow.hazelcast.configYamlPath=/data/hazelcast/hazelcast.yaml"),
 				ContainSubstring("--flow.schema.server.clustered=true"),
 			))
+		})
+		It("should update size parameter", func() {
+			f := &hazelcastv1alpha1.Flow{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec: hazelcastv1alpha1.FlowSpec{
+					Size:                 ptr.To(int32(3)),
+					LicenseKeySecretName: n.LicenseKeySecret,
+					Database: hazelcastv1alpha1.DatabaseConfig{
+						Host:       "host",
+						SecretName: dbSecret,
+					},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), f)).Should(Succeed())
+			Eventually(func() int32 {
+				sts := getStatefulSet(f)
+				return *sts.Spec.Replicas
+			}).Should(Equal(int32(3)))
+
+			Expect(updateCR(f, func(cr *hazelcastv1alpha1.Flow) {
+				cr.Spec.Size = ptr.To(int32(6))
+			})).Should(Succeed())
+			Eventually(func() int32 {
+				sts := getStatefulSet(f)
+				return *sts.Spec.Replicas
+			}).Should(Equal(int32(6)))
+		})
+		It("Update size using scale subresource", func() {
+			f := &hazelcastv1alpha1.Flow{
+				ObjectMeta: randomObjectMeta(namespace),
+				Spec: hazelcastv1alpha1.FlowSpec{
+					Size:                 ptr.To(int32(3)),
+					LicenseKeySecretName: n.LicenseKeySecret,
+					Database: hazelcastv1alpha1.DatabaseConfig{
+						Host:       "host",
+						SecretName: dbSecret,
+					},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), f)).Should(Succeed())
+			Eventually(func() int32 {
+				sts := getStatefulSet(f)
+				return *sts.Spec.Replicas
+			}).Should(Equal(int32(3)))
+
+			scale := &autoscalingv1.Scale{Spec: autoscalingv1.ScaleSpec{Replicas: 2}}
+			Expect(k8sClient.SubResource("scale").Update(ctx, f, k8scl.WithSubResourceBody(scale))).Should(Succeed())
+			Eventually(func() int32 {
+				sts := getStatefulSet(f)
+				return *sts.Spec.Replicas
+			}).Should(Equal(int32(2)))
 		})
 	})
 

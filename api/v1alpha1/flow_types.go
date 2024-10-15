@@ -122,11 +122,16 @@ type FlowStatus struct {
 	// Message about the Flow state
 	// +optional
 	Message string `json:"message,omitempty"`
+
+	// Size of Flow members in the cluster.
+	// +optional
+	Size int32 `json:"size"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase",description="Current state of the Flow deployment"
+//+kubebuilder:subresource:scale:specpath=.spec.size,statuspath=.status.size
 
 // Flow is the Schema for the flows API
 type Flow struct {
