@@ -173,7 +173,7 @@ func TestFind(t *testing.T) {
 			}
 
 			// test
-			got, err := find(ctx, bucket)
+			got, err := find(ctx, bucket, false)
 			require.Equal(t, tt.wantErr, err != nil, "Error is: ", err)
 			if err != nil {
 				return

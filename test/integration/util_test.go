@@ -109,6 +109,18 @@ func getStatefulSet(cr metav1.Object) *appsv1.StatefulSet {
 	return sts
 }
 
+func getStatefulSetByName(nn types.NamespacedName) *appsv1.StatefulSet {
+	sts := &appsv1.StatefulSet{}
+	Eventually(func() error {
+		return k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: nn.Namespace,
+			Name:      nn.Name,
+		}, sts)
+	}, timeout, interval).Should(Succeed())
+
+	return sts
+}
+
 func getSecret(cr metav1.Object) *corev1.Secret {
 	s := &corev1.Secret{}
 	Eventually(func() error {

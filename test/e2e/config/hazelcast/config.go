@@ -65,6 +65,14 @@ var (
 		}
 	}
 
+	WithLiteMembers = func(lk types.NamespacedName, lbls map[string]string, count int32) *hazelcastcomv1alpha1.Hazelcast {
+		hz := Default(lk, lbls)
+		hz.Spec.LiteMember = &hazelcastcomv1alpha1.LiteMember{
+			Count: count,
+		}
+		return hz
+	}
+
 	ExposeExternallySmartLoadBalancer = func(lk types.NamespacedName, lbls map[string]string) *hazelcastcomv1alpha1.Hazelcast {
 		return &hazelcastcomv1alpha1.Hazelcast{
 			ObjectMeta: v1.ObjectMeta{

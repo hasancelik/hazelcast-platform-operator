@@ -100,7 +100,7 @@ func getLocks(dir string) ([]os.DirEntry, error) {
 	return locks, nil
 }
 
-func find(ctx context.Context, bucket *blob.Bucket) ([]string, error) {
+func find(ctx context.Context, bucket *blob.Bucket, isLite bool) ([]string, error) {
 	var keys []string
 	var latest string
 	iter := bucket.List(nil)
@@ -111,6 +111,15 @@ func find(ctx context.Context, bucket *blob.Bucket) ([]string, error) {
 		}
 		if err != nil {
 			return nil, err
+		}
+
+		attrs, err := bucket.Attributes(ctx, obj.Key)
+		if err != nil {
+			return nil, err
+		}
+		_, isLiteBackup := attrs.Metadata["lite-member"]
+		if isLite != isLiteBackup {
+			continue
 		}
 
 		// naive validation, we only want tgz files

@@ -15,10 +15,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/hazelcast/hazelcast-platform-operator/agent/internal/fileutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob/fileblob"
+
+	"github.com/hazelcast/hazelcast-platform-operator/agent/internal/fileutil"
 )
 
 var exampleTarGzFiles = []fileutil.File{
@@ -492,7 +493,7 @@ func TestUploadBackup(t *testing.T) {
 
 			// Run test
 			prefix := "prefix"
-			backupKey, err := UploadBackup(ctx, bucket, backupDir, prefix, tt.memberID)
+			backupKey, err := UploadBackup(ctx, bucket, backupDir, prefix, tt.memberID, false)
 			require.Equal(t, tt.wantErr, err != nil, "Error is: ", err)
 			if err != nil {
 				return

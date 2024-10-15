@@ -29,6 +29,11 @@ import (
 	"github.com/hazelcast/hazelcast-platform-operator/test"
 )
 
+var create = func(hz *hazelcastv1alpha1.Hazelcast) {
+	By("creating the Hazelcast CR with specs successfully")
+	Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
+}
+
 var _ = Describe("Hazelcast CR", func() {
 	const namespace = "default"
 
@@ -45,11 +50,6 @@ var _ = Describe("Hazelcast CR", func() {
 			Name:      (&hazelcastv1alpha1.Hazelcast{ObjectMeta: metav1.ObjectMeta{Name: hz.Name, Namespace: namespace}}).ClusterScopedName(),
 			Namespace: "",
 		}
-	}
-
-	create := func(hz *hazelcastv1alpha1.Hazelcast) {
-		By("creating the Hazelcast CR with specs successfully")
-		Expect(k8sClient.Create(context.Background(), hz)).Should(Succeed())
 	}
 
 	fetchServices := func(hz *hazelcastv1alpha1.Hazelcast, waitForN int) *corev1.ServiceList {

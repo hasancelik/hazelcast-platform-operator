@@ -55,6 +55,7 @@ func (v *hazelcastValidator) validateSpecCurrent(h *Hazelcast) {
 	v.validateAdvancedNetwork(h)
 	v.validateJetConfig(h)
 	v.validateJVMConfig(h)
+	v.validateLiteMemberJVMConfig(h)
 	v.validateCustomConfig(h)
 	v.validateNativeMemory(h)
 	v.validateSQL(h)
@@ -302,6 +303,20 @@ func (v *hazelcastValidator) isOverlapWithOtherSockets(h *Hazelcast) {
 
 func (v *hazelcastValidator) validateJVMConfig(h *Hazelcast) {
 	jvm := h.Spec.JVM
+	if jvm == nil {
+		return
+	}
+
+	v.validateJVMMemoryArgs(jvm.Memory, jvm.Args)
+	v.validateJVMGCArgs(jvm.GC, jvm.Args)
+}
+
+func (v *hazelcastValidator) validateLiteMemberJVMConfig(h *Hazelcast) {
+	if h.Spec.LiteMember == nil {
+		return
+	}
+
+	jvm := h.Spec.LiteMember.JVM
 	if jvm == nil {
 		return
 	}

@@ -26,7 +26,7 @@ var (
 	ErrMemberIDOutOfIndex = errors.New("MemberID is out of index for present backup folders")
 )
 
-func UploadBackup(ctx context.Context, bucket *blob.Bucket, backupsDir, prefix string, memberID int) (string, error) {
+func UploadBackup(ctx context.Context, bucket *blob.Bucket, backupsDir, prefix string, memberID int, isLite bool) (string, error) {
 	backupSeqs, err := fileutil.FolderSequence(backupsDir)
 	if err != nil {
 		return "", err
@@ -62,7 +62,7 @@ func UploadBackup(ctx context.Context, bucket *blob.Bucket, backupsDir, prefix s
 	uuidDir := filepath.Join(latestSeqDir, uuid.Name())
 	key := filepath.Join(prefix, humanReadableSeq, uuid.Name()+".tar.gz")
 
-	err = uploadBackup(ctx, bucket, key, uuidDir, uuid.Name())
+	err = uploadBackup(ctx, bucket, isLite, key, uuidDir, uuid.Name())
 	if err != nil {
 		return "", err
 	}
@@ -90,8 +90,17 @@ func allFilesMarkedToBeDeleted(files []fs.DirEntry, dir string) bool {
 	return true
 }
 
-func uploadBackup(ctx context.Context, bucket *blob.Bucket, name, backupDir, baseDirName string) error {
-	w, err := bucket.NewWriter(ctx, name, nil)
+func uploadBackup(ctx context.Context, bucket *blob.Bucket, isLite bool, name, backupDir, baseDirName string) error {
+	opt := &blob.WriterOptions{}
+	if isLite {
+		opt = &blob.WriterOptions{
+			Metadata: map[string]string{
+				"lite-member": "true",
+			},
+		}
+	}
+
+	w, err := bucket.NewWriter(ctx, name, opt)
 	if err != nil {
 		return err
 	}

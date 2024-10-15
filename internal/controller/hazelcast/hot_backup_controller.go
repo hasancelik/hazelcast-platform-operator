@@ -326,6 +326,7 @@ func (r *HotBackupReconciler) startBackup(ctx context.Context, backupName types.
 				HazelcastName: hb.Spec.HazelcastResourceName,
 				SecretName:    hb.Spec.GetSecretName(),
 				MemberID:      i,
+				IsLiteMember:  m.IsLiteMember,
 			})
 			if err != nil {
 				return err

@@ -20,9 +20,10 @@ import (
 	"time"
 	. "time"
 
+	"k8s.io/utils/ptr"
+
 	"github.com/hazelcast/hazelcast-platform-operator/internal/util"
 	"github.com/hazelcast/hazelcast-platform-operator/test"
-	"k8s.io/utils/ptr"
 
 	hzClient "github.com/hazelcast/hazelcast-go-client"
 	"github.com/hazelcast/hazelcast-go-client/cluster"
@@ -596,7 +597,7 @@ func evaluateReadyMembers(lookupKey types.NamespacedName) {
 			}
 			return nil
 		}, 5*Minute, interval).Should(BeNil())
-		membersCount := int(*hz.Spec.ClusterSize)
+		membersCount := int(*hz.Spec.ClusterSize + hz.Spec.LiteMember.GetCount())
 		Eventually(func() (string, error) {
 			err := k8sClient.Get(context.Background(), lookupKey, hz)
 			if err != nil {

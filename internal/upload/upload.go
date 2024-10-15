@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/hazelcast/hazelcast-platform-operator/agent/sidecar"
 
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
@@ -34,6 +35,7 @@ type Config struct {
 	SecretName    string
 	MTLSClient    *http.Client
 	MemberID      int
+	IsLiteMember  bool
 }
 
 func NewUpload(config *Config) (*Upload, error) {
@@ -61,6 +63,7 @@ func (u *Upload) Start(ctx context.Context) error {
 		HazelcastCRName: u.Config.HazelcastName,
 		SecretName:      u.Config.SecretName,
 		MemberID:        u.Config.MemberID,
+		IsLiteMember:    u.Config.IsLiteMember,
 	})
 	if err != nil {
 		return err

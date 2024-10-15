@@ -166,9 +166,16 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
 	}
 
-	err = r.reconcileUnusedServicePerPod(ctx, h)
+	err = r.reconcileUnusedServicePerPod(ctx, h, false)
 	if err != nil {
 		return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
+	}
+
+	if h.Spec.LiteMember != nil {
+		err = r.reconcileUnusedServicePerPod(ctx, h, true)
+		if err != nil {
+			return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
+		}
 	}
 
 	if !r.isServicePerPodReady(ctx, h) {
@@ -210,7 +217,7 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
 	}
 
-	if err = r.reconcileStatefulset(ctx, h, logger); err != nil {
+	if err = r.reconcileStatefulset(ctx, h, false, logger); err != nil {
 		// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 		if errors.IsConflict(err) {
 			return ctrl.Result{}, nil
@@ -218,6 +225,16 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
 		}
 	}
+
+	if err = r.reconcileStatefulset(ctx, h, true, logger); err != nil {
+		// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
+		if errors.IsConflict(err) {
+			return ctrl.Result{}, nil
+		} else {
+			return r.update(ctx, h, recoptions.Error(err), withHzFailedPhase(err.Error()))
+		}
+	}
+
 	if err = r.persistenceStartupAction(ctx, h, logger); err != nil {
 		logger.V(util.WarnLevel).Info("Startup action call was unsuccessful", "error", err.Error())
 		return r.update(ctx, h, recoptions.RetryAfter(retryAfter), withHzPhase(hazelcastv1alpha1.Pending))
@@ -257,6 +274,46 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	var liteSts appsv1.StatefulSet
+	if h.Spec.LiteMember.GetCount() > 0 {
+		liteNN := types.NamespacedName{
+			Name:      req.Name + n.LiteSuffix,
+			Namespace: req.Namespace,
+		}
+		if err := r.Client.Get(ctx, liteNN, &liteSts); err != nil {
+			if errors.IsNotFound(err) {
+				return r.update(ctx, h, recoptions.RetryAfter(retryAfter),
+					withHzPhase(hazelcastv1alpha1.Pending),
+					r.withMemberStatuses(ctx, h, err),
+					withHzMessage(""),
+					withHzStatefulSet(liteSts),
+				)
+			}
+			return r.update(ctx, h, recoptions.Error(err),
+				withHzFailedPhase(err.Error()),
+				r.withMemberStatuses(ctx, h, err),
+				withHzStatefulSet(liteSts),
+			)
+		}
+
+		if ok, err := util.CheckIfRunning(ctx, r.Client, &liteSts, h.Spec.LiteMember.GetCount()); !ok {
+			if err == nil {
+				return r.update(ctx, h, recoptions.RetryAfter(retryAfter),
+					withHzPhase(hazelcastv1alpha1.Pending),
+					r.withMemberStatuses(ctx, h, err),
+					withHzMessage(""),
+					withHzStatefulSet(liteSts),
+				)
+			} else {
+				return r.update(ctx, h, recoptions.Error(err),
+					withHzFailedPhase(err.Error()),
+					r.withMemberStatuses(ctx, h, err),
+					withHzStatefulSet(liteSts),
+				)
+			}
+		}
+	}
+
 	cl, err := r.clientRegistry.GetOrCreate(ctx, req.NamespacedName)
 	if err != nil {
 		return r.update(ctx, h, recoptions.RetryAfter(retryAfter),
@@ -274,6 +331,9 @@ func (r *HazelcastReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	if !isEnterprise {
 		if err = r.Client.Delete(ctx, &statefulSet); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err = r.Client.Delete(ctx, &liteSts); err != nil {
 			return ctrl.Result{}, err
 		}
 		return r.update(ctx, h, recoptions.Error(illegalClusterType), withHzFailedPhase(illegalClusterType.Error()))

@@ -199,6 +199,67 @@ type HazelcastSpec struct {
 	// +kubebuilder:validation:XValidation:message="Environment variables cannot start with 'HZ_'. Use customConfigCmName to configure Hazelcast.",rule="self.all(env, env.name.startsWith('HZ_') == false)"
 	// +kubebuilder:validation:XValidation:message="Environment variable name cannot be empty.",rule="self.all(env, env.name != '')"
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// +optional
+	LiteMember *LiteMember `json:"liteMember,omitempty"`
+}
+
+type LiteMember struct {
+	// +required
+	Count int32 `json:"count"`
+
+	// Scheduling details
+	// +optional
+	Scheduling *SchedulingConfiguration `json:"scheduling,omitempty"`
+
+	// Hazelcast JVM configuration
+	// +optional
+	JVM *JVMConfiguration `json:"jvm,omitempty"`
+
+	// Compute Resources required by the Hazelcast container.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Env configuration of environment variables
+	// +optional
+	// +kubebuilder:validation:XValidation:message="Environment variables cannot start with 'HZ_'. Use customConfigCmName to configure Hazelcast.",rule="self.all(env, env.name.startsWith('HZ_') == false)"
+	// +kubebuilder:validation:XValidation:message="Environment variable name cannot be empty.",rule="self.all(env, env.name != '')"
+	Env []corev1.EnvVar `json:"env,omitempty"`
+}
+
+func (lm *LiteMember) GetCount() int32 {
+	if lm != nil {
+		return lm.Count
+	}
+	return 0
+}
+
+func (lm *LiteMember) IsResourcesEnabled() bool {
+	if lm != nil && lm.Resources != nil {
+		return true
+	}
+	return false
+}
+
+func (lm *LiteMember) IsSchedulingEnabled() bool {
+	if lm != nil && lm.Scheduling != nil {
+		return true
+	}
+	return false
+}
+
+func (lm *LiteMember) GetEnv() []corev1.EnvVar {
+	if lm != nil && lm.Env != nil {
+		return lm.Env
+	}
+	return []corev1.EnvVar{}
+}
+
+func (lm *LiteMember) GetJVM() *JVMConfiguration {
+	if lm != nil && lm.JVM != nil {
+		return lm.JVM
+	}
+	return nil
 }
 
 func (s *HazelcastSpec) GetLicenseKeySecretName() string {
@@ -1284,6 +1345,10 @@ type HazelcastStatus struct {
 	// Number of Hazelcast members in the cluster.
 	// +optional
 	ClusterSize int32 `json:"clusterSize"`
+
+	// Number of Hazelcast lite members in the cluster.
+	// +optional
+	LiteMemberCount int32 `json:"liteMemberCount"`
 
 	// Selector is a label selector used by HorizontalPodAutoscaler to autoscale Hazelcast resource.
 	// +optional

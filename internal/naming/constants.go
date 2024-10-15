@@ -260,3 +260,5 @@ const (
 	KeystoreFileName   = "keystore.p12"
 	TrustStoreFileName = "truststore.p12"
 )
+
+const LiteSuffix = "-lite"

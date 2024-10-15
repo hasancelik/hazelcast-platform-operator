@@ -125,6 +125,9 @@ func (s *WanSyncService) waitWanSyncToFinish(ctx context.Context, c Client, uuid
 	members := c.OrderedMembers()
 	eventsCh := make(chan codecTypes.MCEvent, len(members))
 	for _, member := range members {
+		if member.LiteMember {
+			continue
+		}
 		logger.V(util.DebugLevel).Info("Polling from", "member", member.String(), "uuid", uuid)
 		wg.Add(1)
 		go func(member cluster.MemberInfo, wg *sync.WaitGroup, ch chan<- codecTypes.MCEvent) {

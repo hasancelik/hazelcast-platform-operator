@@ -49,7 +49,7 @@ func (t *task) process(ID uuid.UUID) {
 	backupsDir := path.Join(t.req.BackupBaseDir, DirName)
 
 	backupLog.Info("Staring backup upload", zap.Uint32("task id", ID.ID()), zap.String("backupsDir", backupsDir), zap.Int("memberID", t.req.MemberID))
-	folderKey, err := UploadBackup(t.ctx, b, backupsDir, t.req.HazelcastCRName, t.req.MemberID)
+	folderKey, err := UploadBackup(t.ctx, b, backupsDir, t.req.HazelcastCRName, t.req.MemberID, t.req.IsLiteMember)
 	if err != nil {
 		backupLog.Error("task could not upload to the bucket: "+err.Error(), zap.Uint32("task id", ID.ID()))
 		t.err = err

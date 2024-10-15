@@ -98,6 +98,7 @@ type UploadReq struct {
 	HazelcastCRName string `json:"hz_cr_name"`
 	SecretName      string `json:"secret_name"`
 	MemberID        int    `json:"member_id"`
+	IsLiteMember    bool   `json:"is_lite_member"`
 }
 
 // UploadResp ia a backup Service upload method response

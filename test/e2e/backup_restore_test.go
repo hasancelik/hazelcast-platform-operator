@@ -23,7 +23,11 @@ import (
 var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_restore"), func() {
 	localPort := strconv.Itoa(8400 + GinkgoParallelProcess())
 
-	backupRestore := func(hazelcast *hazelcastcomv1alpha1.Hazelcast, hotBackup *hazelcastcomv1alpha1.HotBackup, useBucketConfig bool) {
+	backupRestore := func(hazelcast *hazelcastcomv1alpha1.Hazelcast, hotBackup *hazelcastcomv1alpha1.HotBackup, useBucketConfig bool, useLiteMember bool) {
+		if useLiteMember {
+			hazelcast.Spec.LiteMember = &hazelcastcomv1alpha1.LiteMember{Count: 1}
+		}
+
 		By("creating cluster with backup enabled")
 		CreateHazelcastCR(hazelcast)
 		evaluateReadyMembers(hzLookupKey)
@@ -386,7 +390,7 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 
 			hazelcast := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
 			hotBackup := hazelcastconfig.HotBackup(hbLookupKey, hazelcast.Name, labels)
-			backupRestore(hazelcast, hotBackup, false)
+			backupRestore(hazelcast, hotBackup, false, true)
 		})
 
 		It("should restore 3 GB from an external backup using a GCP bucket", Tag(AnyCloud), func() {
@@ -573,7 +577,7 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 
 			hazelcast := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
 			hotBackup := hazelcastconfig.HotBackupBucket(hbLookupKey, hazelcast.Name, labels, bucketURI, secretName)
-			backupRestore(hazelcast, hotBackup, useBucketConfig)
+			backupRestore(hazelcast, hotBackup, useBucketConfig, true)
 		},
 			Entry("using AWS S3 bucket HotBackupResourceName", Tag(AnyCloud), "s3://operator-e2e-external-backup", "br-secret-s3", false),
 			Entry("using GCP bucket HotBackupResourceName", Tag(AnyCloud), "gs://operator-e2e-external-backup", "br-secret-gcp", false),
@@ -589,7 +593,7 @@ var _ = Describe("Hazelcast CR with Persistence feature enabled", Group("backup_
 			hazelcast := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
 			hotBackup := hazelcastconfig.HotBackupBucket(hbLookupKey, hazelcast.Name, labels, bucketURI, "")
 			hazelcast.Spec.ServiceAccountName = serviceAccount
-			backupRestore(hazelcast, hotBackup, false)
+			backupRestore(hazelcast, hotBackup, false, false)
 		},
 			Entry("using GCP Workload Identity", Tag(GCP), "cn-workload-identity-test", "gs://operator-e2e-external-backup"),
 			Entry("using AWS IAM ServiceAccount", Tag(AWS), "aws-iam-sa", "s3://operator-e2e-external-backup"),

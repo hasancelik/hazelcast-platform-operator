@@ -530,47 +530,64 @@ func (r *HazelcastReconciler) reconcileServicePerPod(ctx context.Context, h *haz
 	}
 
 	for i := 0; i < int(*h.Spec.ClusterSize); i++ {
-		service := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        servicePerPodName(i, h),
-				Namespace:   h.Namespace,
-				Labels:      servicePerPodLabels(h),
-				Annotations: h.Spec.Annotations,
-			},
-			Spec: corev1.ServiceSpec{
-				Selector:                 servicePerPodSelector(i, h),
-				PublishNotReadyAddresses: true,
-			},
-		}
-
-		err := controllerutil.SetControllerReference(h, service, r.Scheme)
-		if err != nil {
-			return err
-		}
-
-		opResult, err := util.CreateOrUpdateForce(ctx, r.Client, service, func() error {
-			switch h.Spec.ExposeExternally.MemberAccessServiceType() {
-			case corev1.ServiceTypeLoadBalancer, corev1.ServiceTypeNodePort:
-				service.Labels[n.ServiceEndpointTypeLabelName] = n.ServiceEndpointTypeMemberLabelValue
-			default:
-				delete(service.Labels, n.ServiceEndpointTypeLabelName)
-			}
-
-			service.Spec.Ports = util.EnrichServiceNodePorts(servicePerPodPorts(h.Spec.AdvancedNetwork), service.Spec.Ports)
-			service.Spec.Type = h.Spec.ExposeExternally.MemberAccessServiceType()
-
-			return nil
-		})
-
-		if opResult != controllerutil.OperationResultNone {
-			logger.Info("Operation result", "Service", servicePerPodName(i, h), "result", opResult)
-		}
-
-		if err != nil {
+		if err := r.createServiceForPod(ctx, h, logger, i, false); err != nil {
 			return err
 		}
 	}
 
+	if h.Spec.LiteMember == nil {
+		return nil
+	}
+
+	for i := 0; i < int(h.Spec.LiteMember.Count); i++ {
+		if err := r.createServiceForPod(ctx, h, logger, i, true); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *HazelcastReconciler) createServiceForPod(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger, i int, isLite bool) error {
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        servicePerPodName(i, h, isLite),
+			Namespace:   h.Namespace,
+			Labels:      servicePerPodLabels(h),
+			Annotations: h.Spec.Annotations,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector:                 servicePerPodSelector(i, h, isLite),
+			PublishNotReadyAddresses: true,
+		},
+	}
+
+	err := controllerutil.SetControllerReference(h, service, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	opResult, err := util.CreateOrUpdateForce(ctx, r.Client, service, func() error {
+		switch h.Spec.ExposeExternally.MemberAccessServiceType() {
+		case corev1.ServiceTypeLoadBalancer, corev1.ServiceTypeNodePort:
+			service.Labels[n.ServiceEndpointTypeLabelName] = n.ServiceEndpointTypeMemberLabelValue
+		default:
+			delete(service.Labels, n.ServiceEndpointTypeLabelName)
+		}
+
+		service.Spec.Ports = util.EnrichServiceNodePorts(servicePerPodPorts(h.Spec.AdvancedNetwork), service.Spec.Ports)
+		service.Spec.Type = h.Spec.ExposeExternally.MemberAccessServiceType()
+
+		return nil
+	})
+
+	if opResult != controllerutil.OperationResultNone {
+		logger.Info("Operation result", "Service", servicePerPodName(i, h, isLite), "result", opResult)
+	}
+
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -611,6 +628,32 @@ func (r *HazelcastReconciler) reconcileHazelcastEndpoints(ctx context.Context, h
 
 	reconciledHzEndpointNames := make(map[string]any)
 
+	if err = r.endpoints(ctx, h, logger, svcList, reconciledHzEndpointNames, nodeAddress); err != nil {
+		return err
+	}
+
+	// Delete the leftover HazelcastEndpoints if any.
+	// The leftover resources take place after disabling the exposeExternally as an update.
+	hzEndpointList := hazelcastv1alpha1.HazelcastEndpointList{}
+	nsOpt := client.InNamespace(h.Namespace)
+	lblOpt := client.MatchingLabels(util.Labels(h))
+	if err := r.Client.List(ctx, &hzEndpointList, nsOpt, lblOpt); err != nil {
+		return err
+	}
+	for _, hzEndpoint := range hzEndpointList.Items {
+		if _, ok := reconciledHzEndpointNames[hzEndpoint.Name]; !ok {
+			logger.Info("Deleting leftover HazelcastEndpoint", "name", hzEndpoint.Name)
+			err := r.Client.Delete(ctx, &hzEndpoint)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *HazelcastReconciler) endpoints(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger, svcList *corev1.ServiceList, reconciledHzEndpointNames map[string]any, nodeAddress map[string]string) error {
 	for _, svc := range svcList.Items {
 		endpointType, ok := svc.Labels[n.ServiceEndpointTypeLabelName]
 		if !ok {
@@ -730,38 +773,28 @@ func (r *HazelcastReconciler) reconcileHazelcastEndpoints(ctx context.Context, h
 			}
 		}
 	}
-
-	// Delete the leftover HazelcastEndpoints if any.
-	// The leftover resources take place after disabling the exposeExternally as an update.
-	hzEndpointList := hazelcastv1alpha1.HazelcastEndpointList{}
-	nsOpt := client.InNamespace(h.Namespace)
-	lblOpt := client.MatchingLabels(util.Labels(h))
-	if err := r.Client.List(ctx, &hzEndpointList, nsOpt, lblOpt); err != nil {
-		return err
-	}
-	for _, hzEndpoint := range hzEndpointList.Items {
-		if _, ok := reconciledHzEndpointNames[hzEndpoint.Name]; !ok {
-			logger.Info("Deleting leftover HazelcastEndpoint", "name", hzEndpoint.Name)
-			err := r.Client.Delete(ctx, &hzEndpoint)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
-func (r *HazelcastReconciler) reconcileUnusedServicePerPod(ctx context.Context, h *hazelcastv1alpha1.Hazelcast) error {
+func (r *HazelcastReconciler) reconcileUnusedServicePerPod(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, isLite bool) error {
 	var s int
 	if h.Spec.ExposeExternally.IsSmart() {
-		s = int(*h.Spec.ClusterSize)
+		if isLite {
+			s = int(h.Spec.LiteMember.GetCount())
+		} else {
+			s = int(*h.Spec.ClusterSize)
+		}
+	}
+
+	stsName := h.Name
+	if isLite {
+		stsName = h.Name + n.LiteSuffix
 	}
 
 	// Delete unused services (when the cluster was scaled down)
 	// The current number of service per pod is always stored in the StatefulSet annotations
 	sts := &appsv1.StatefulSet{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: h.Name, Namespace: h.Namespace}, sts)
+	err := r.Client.Get(ctx, client.ObjectKey{Name: stsName, Namespace: h.Namespace}, sts)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			// Not found, StatefulSet is not created yet, no need to delete any services
@@ -777,7 +810,7 @@ func (r *HazelcastReconciler) reconcileUnusedServicePerPod(ctx context.Context, 
 
 	for i := s; i < p; i++ {
 		s := &corev1.Service{}
-		err := r.Client.Get(ctx, client.ObjectKey{Name: servicePerPodName(i, h), Namespace: h.Namespace}, s)
+		err := r.Client.Get(ctx, client.ObjectKey{Name: servicePerPodName(i, h, isLite), Namespace: h.Namespace}, s)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				// Not found, no need to remove the service
@@ -798,13 +831,17 @@ func (r *HazelcastReconciler) reconcileUnusedServicePerPod(ctx context.Context, 
 	return nil
 }
 
-func servicePerPodName(i int, h *hazelcastv1alpha1.Hazelcast) string {
-	return fmt.Sprintf("%s-%d", h.Name, i)
+func servicePerPodName(i int, h *hazelcastv1alpha1.Hazelcast, isLite bool) string {
+	if isLite {
+		return fmt.Sprintf("%s%s-%d", h.Name, n.LiteSuffix, i)
+	} else {
+		return fmt.Sprintf("%s-%d", h.Name, i)
+	}
 }
 
-func servicePerPodSelector(i int, h *hazelcastv1alpha1.Hazelcast) map[string]string {
+func servicePerPodSelector(i int, h *hazelcastv1alpha1.Hazelcast, isLite bool) map[string]string {
 	ls := util.Labels(h)
-	ls[n.PodNameLabel] = servicePerPodName(i, h)
+	ls[n.PodNameLabel] = servicePerPodName(i, h, isLite)
 	return ls
 }
 
@@ -888,32 +925,60 @@ func (r *HazelcastReconciler) isServicePerPodReady(ctx context.Context, h *hazel
 		return true
 	}
 
-	// Check if each service per pod is ready
-	for i := 0; i < int(*h.Spec.ClusterSize); i++ {
-		s := &corev1.Service{}
-		err := r.Client.Get(ctx, client.ObjectKey{Name: servicePerPodName(i, h), Namespace: h.Namespace}, s)
-		if err != nil {
-			// Service is not created yet
+	if !r.isServicesReady(ctx, h, false) {
+		return false
+	}
+
+	if !r.isServicesReady(ctx, h, true) {
+		return false
+	}
+
+	return true
+}
+
+func (r *HazelcastReconciler) isServicesReady(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, isLite bool) bool {
+	s := *h.Spec.ClusterSize
+
+	if isLite {
+		if h.Spec.LiteMember == nil {
+			return true
+		} else {
+			s = h.Spec.LiteMember.Count
+		}
+	}
+
+	for i := 0; i < int(s); i++ {
+		if !r.isServiceReady(ctx, h, servicePerPodName(i, h, isLite)) {
 			return false
 		}
-		if s.Spec.Type == corev1.ServiceTypeLoadBalancer {
-			if len(s.Status.LoadBalancer.Ingress) == 0 {
-				// LoadBalancer service waiting for External IP to get assigned
-				return false
-			}
-			for _, ingress := range s.Status.LoadBalancer.Ingress {
-				// Hostname is set for load-balancer ingress points that are DNS based
-				// (typically AWS load-balancers)
-				if ingress.Hostname != "" {
-					if _, err := net.DefaultResolver.LookupHost(ctx, ingress.Hostname); err != nil {
-						// Hostname does not resolve yet
-						return false
-					}
+	}
+
+	return true
+}
+
+func (r *HazelcastReconciler) isServiceReady(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, svcName string) bool {
+	s := &corev1.Service{}
+	err := r.Client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: h.Namespace}, s)
+	if err != nil {
+		// Service is not created yet
+		return false
+	}
+	if s.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		if len(s.Status.LoadBalancer.Ingress) == 0 {
+			// LoadBalancer service waiting for External IP to get assigned
+			return false
+		}
+		for _, ingress := range s.Status.LoadBalancer.Ingress {
+			// Hostname is set for load-balancer ingress points that are DNS based
+			// (typically AWS load-balancers)
+			if ingress.Hostname != "" {
+				if _, err := net.DefaultResolver.LookupHost(ctx, ingress.Hostname); err != nil {
+					// Hostname does not resolve yet
+					return false
 				}
 			}
 		}
 	}
-
 	return true
 }
 
@@ -1196,8 +1261,7 @@ func restoreLocalInitContainer(h *hazelcastv1alpha1.Hazelcast, conf hazelcastv1a
 	}
 }
 
-func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, logger logr.Logger) error {
-	var terminationGracePeriodSeconds int64 = 600
+func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazelcastv1alpha1.Hazelcast, isLite bool, logger logr.Logger) error {
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: controller.Metadata(h, n.Hazelcast),
 		Spec: appsv1.StatefulSetSpec{
@@ -1246,10 +1310,13 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 						},
 						SecurityContext: controller.ContainerSecurityContext(),
 					}},
-					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+					TerminationGracePeriodSeconds: ptr.To(int64(600)),
 				},
 			},
 		},
+	}
+	if isLite {
+		sts.ObjectMeta.Name = h.ObjectMeta.GetName() + n.LiteSuffix
 	}
 
 	pvcName := n.PVCName
@@ -1272,8 +1339,15 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 		if len(sts.Spec.VolumeClaimTemplates) > 0 {
 			pvcName = sts.Spec.VolumeClaimTemplates[0].Name
 		}
-		sts.Spec.Replicas = h.Spec.ClusterSize
-		sts.ObjectMeta.Annotations = statefulSetAnnotations(sts, h)
+
+		if !isLite {
+			sts.Spec.Replicas = h.Spec.ClusterSize
+		} else {
+			lc := h.Spec.LiteMember.GetCount()
+			sts.Spec.Replicas = &lc
+		}
+
+		sts.ObjectMeta.Annotations = statefulSetAnnotations(sts, h, isLite)
 		sts.Spec.Template.Annotations, err = podAnnotations(sts.Spec.Template.Annotations, h)
 		if err != nil {
 			return err
@@ -1281,25 +1355,35 @@ func (r *HazelcastReconciler) reconcileStatefulset(ctx context.Context, h *hazel
 		sts.Spec.Template.Spec.ServiceAccountName = serviceAccountName(h)
 		sts.Spec.Template.Spec.ImagePullSecrets = h.Spec.ImagePullSecrets
 		sts.Spec.Template.Spec.Containers[0].Image = h.DockerImage()
-		sts.Spec.Template.Spec.Containers[0].Env = env(h)
+		sts.Spec.Template.Spec.Containers[0].Env = env(h, isLite)
 		sts.Spec.Template.Spec.Containers[0].ImagePullPolicy = h.Spec.ImagePullPolicy
-		if h.Spec.Resources != nil {
+		if !isLite && h.Spec.Resources != nil {
 			sts.Spec.Template.Spec.Containers[0].Resources = *h.Spec.Resources
+		}
+		if isLite && h.Spec.LiteMember.IsResourcesEnabled() {
+			sts.Spec.Template.Spec.Containers[0].Resources = *h.Spec.LiteMember.Resources
 		}
 		sts.Spec.Template.Spec.Containers[0].Ports = hazelcastContainerPorts(h)
 
-		if h.Spec.Scheduling != nil {
+		if !isLite && h.Spec.Scheduling != nil {
 			sts.Spec.Template.Spec.Affinity = h.Spec.Scheduling.Affinity
 			sts.Spec.Template.Spec.Tolerations = h.Spec.Scheduling.Tolerations
 			sts.Spec.Template.Spec.NodeSelector = h.Spec.Scheduling.NodeSelector
 		}
-		sts.Spec.Template.Spec.TopologySpreadConstraints = appendHAModeTopologySpreadConstraints(h)
+
+		if isLite && h.Spec.LiteMember.IsSchedulingEnabled() {
+			sts.Spec.Template.Spec.Affinity = h.Spec.LiteMember.Scheduling.Affinity
+			sts.Spec.Template.Spec.Tolerations = h.Spec.LiteMember.Scheduling.Tolerations
+			sts.Spec.Template.Spec.NodeSelector = h.Spec.LiteMember.Scheduling.NodeSelector
+		}
+
+		sts.Spec.Template.Spec.TopologySpreadConstraints = appendHAModeTopologySpreadConstraints(h, isLite)
 
 		if semver.Compare(fmt.Sprintf("v%s", h.Spec.Version), "v5.2.0") == 1 {
 			sts.Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Path = "/hazelcast/health/ready"
 		}
 
-		ic, err := initContainer(h, pvcName)
+		ic, err := initContainer(h, pvcName, isLite)
 		if err != nil {
 			return err
 		}
@@ -1463,7 +1547,7 @@ func hazelcastContainerWanPorts(h *hazelcastv1alpha1.Hazelcast) []corev1.Contain
 	return c
 }
 
-func initContainer(h *hazelcastv1alpha1.Hazelcast, pvcName string) (corev1.Container, error) {
+func initContainer(h *hazelcastv1alpha1.Hazelcast, pvcName string, isLite bool) (corev1.Container, error) {
 	c := corev1.Container{
 		Name:  n.InitContainer,
 		Image: h.AgentDockerImage(),
@@ -1494,6 +1578,13 @@ func initContainer(h *hazelcastv1alpha1.Hazelcast, pvcName string) (corev1.Conta
 				MountPath: n.InitConfigDir,
 			},
 		},
+	}
+
+	if isLite {
+		c.Env = append(c.Env, corev1.EnvVar{
+			Name:  "HZ_LITEMEMBER_ENABLED",
+			Value: "true",
+		})
 	}
 
 	if h.Spec.DeprecatedUserCodeDeployment.IsBucketEnabled() ||
@@ -1821,11 +1912,23 @@ func (r *HazelcastReconciler) isEnterpriseCluster(ctx context.Context, client hz
 	return failOverSupported, nil
 }
 
-func appendHAModeTopologySpreadConstraints(h *hazelcastv1alpha1.Hazelcast) []corev1.TopologySpreadConstraint {
+func appendHAModeTopologySpreadConstraints(h *hazelcastv1alpha1.Hazelcast, isLite bool) []corev1.TopologySpreadConstraint {
 	var topologySpreadConstraints []corev1.TopologySpreadConstraint
-	if h.Spec.Scheduling != nil {
+
+	if !isLite && h.Spec.Scheduling != nil {
 		topologySpreadConstraints = append(topologySpreadConstraints, h.Spec.Scheduling.TopologySpreadConstraints...)
 	}
+
+	if isLite && h.Spec.LiteMember.IsSchedulingEnabled() {
+		topologySpreadConstraints = append(topologySpreadConstraints, h.Spec.LiteMember.Scheduling.TopologySpreadConstraints...)
+	}
+
+	// HA Mode is not applicable to lite members, `partition-group` configuration will be in hazelcast config,
+	// but it will have no affect that lite members do not hold any data.
+	if isLite {
+		return topologySpreadConstraints
+	}
+
 	if h.Spec.HighAvailabilityMode != "" {
 		switch h.Spec.HighAvailabilityMode {
 		case "NODE":
@@ -1846,15 +1949,12 @@ func appendHAModeTopologySpreadConstraints(h *hazelcastv1alpha1.Hazelcast) []cor
 				})
 		}
 	}
+
 	return topologySpreadConstraints
 }
 
-func env(h *hazelcastv1alpha1.Hazelcast) []corev1.EnvVar {
+func env(h *hazelcastv1alpha1.Hazelcast, isLite bool) []corev1.EnvVar {
 	envs := []corev1.EnvVar{
-		{
-			Name:  JavaOpts,
-			Value: javaOPTS(h),
-		},
 		{
 			Name:  "HZ_PARDOT_ID",
 			Value: "operator",
@@ -1876,6 +1976,22 @@ func env(h *hazelcastv1alpha1.Hazelcast) []corev1.EnvVar {
 			Value: javaClassPath(h),
 		},
 	}
+
+	if isLite {
+		envs = append(envs, corev1.EnvVar{
+			Name:  "HZ_LITEMEMBER_ENABLED",
+			Value: "true",
+		})
+		envs = append(envs, h.Spec.LiteMember.GetEnv()...)
+	} else {
+		envs = append(envs, h.Spec.Env...)
+	}
+
+	envs = append(envs, corev1.EnvVar{
+		Name:  JavaOpts,
+		Value: javaOPTS(&h.Spec, isLite),
+	})
+
 	if h.Spec.GetLicenseKeySecretName() != "" {
 		envs = append(envs,
 			corev1.EnvVar{
@@ -1891,19 +2007,25 @@ func env(h *hazelcastv1alpha1.Hazelcast) []corev1.EnvVar {
 			})
 	}
 
-	envs = append(envs, h.Spec.Env...)
-
 	return envs
 }
 
-func javaOPTS(h *hazelcastv1alpha1.Hazelcast) string {
+func javaOPTS(h *hazelcastv1alpha1.HazelcastSpec, isLite bool) string {
 	b := strings.Builder{}
 	b.WriteString("-Dhazelcast.config=" + path.Join(n.HazelcastMountPath, "hazelcast.yaml"))
 
 	// we should configure JVM to respect container’s resource limits
 	b.WriteString(" -XX:+UseContainerSupport")
 
-	jvmMemory := h.Spec.JVM.GetMemory()
+	var jvmConf *hazelcastv1alpha1.JVMConfiguration
+
+	if isLite {
+		jvmConf = h.LiteMember.GetJVM()
+	} else {
+		jvmConf = h.JVM
+	}
+
+	jvmMemory := jvmConf.GetMemory()
 
 	// in addition, we allow user to set explicit memory limits
 	if v := jvmMemory.GetInitialRAMPercentage(); v != "" {
@@ -1918,7 +2040,7 @@ func javaOPTS(h *hazelcastv1alpha1.Hazelcast) string {
 		b.WriteString(" -XX:MaxRAMPercentage=" + v)
 	}
 
-	args := h.Spec.JVM.GetArgs()
+	args := jvmConf.GetArgs()
 	if len(args) != 0 {
 		args = mergeJVMArgs(args)
 	} else {
@@ -1931,7 +2053,7 @@ func javaOPTS(h *hazelcastv1alpha1.Hazelcast) string {
 		b.WriteString(fmt.Sprintf(" %s", a))
 	}
 
-	jvmGC := h.Spec.JVM.GCConfig()
+	jvmGC := jvmConf.GCConfig()
 
 	if jvmGC.IsLoggingEnabled() {
 		b.WriteString(" -verbose:gc")
@@ -1981,7 +2103,7 @@ func javaClassPath(h *hazelcastv1alpha1.Hazelcast) string {
 	return strings.Join(b, ":")
 }
 
-func statefulSetAnnotations(sts *appsv1.StatefulSet, h *hazelcastv1alpha1.Hazelcast) map[string]string {
+func statefulSetAnnotations(sts *appsv1.StatefulSet, h *hazelcastv1alpha1.Hazelcast, isLite bool) map[string]string {
 	annotations := make(map[string]string)
 
 	// copy old annotations
@@ -1999,7 +2121,11 @@ func statefulSetAnnotations(sts *appsv1.StatefulSet, h *hazelcastv1alpha1.Hazelc
 	}
 
 	// overwrite
-	annotations[n.ServicePerPodCountAnnotation] = strconv.Itoa(int(*h.Spec.ClusterSize))
+	if isLite {
+		annotations[n.ServicePerPodCountAnnotation] = strconv.Itoa(int(h.Spec.LiteMember.GetCount()))
+	} else {
+		annotations[n.ServicePerPodCountAnnotation] = strconv.Itoa(int(*h.Spec.ClusterSize))
+	}
 
 	return annotations
 }

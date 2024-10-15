@@ -69,6 +69,7 @@ var _ = Describe("Hazelcast CR with expose externally feature", Group("expose_ex
 
 			setLabelAndCRName("hee-2")
 			hazelcast := hazelcastconfig.ExposeExternallySmartNodePort(hzLookupKey, labels)
+			hazelcast.Spec.LiteMember = &hazelcastcomv1alpha1.LiteMember{Count: 2}
 			CreateHazelcastCR(hazelcast)
 			evaluateReadyMembers(hzLookupKey)
 
@@ -123,6 +124,7 @@ var _ = Describe("Hazelcast CR with expose externally feature", Group("expose_ex
 
 			setLabelAndCRName("hee-3")
 			hazelcast := hazelcastconfig.ExposeExternallySmartLoadBalancer(hzLookupKey, labels)
+			hazelcast.Spec.LiteMember = &hazelcastcomv1alpha1.LiteMember{Count: 2}
 			CreateHazelcastCR(hazelcast)
 			evaluateReadyMembers(hzLookupKey)
 

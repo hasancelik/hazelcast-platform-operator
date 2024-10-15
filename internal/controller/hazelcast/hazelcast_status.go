@@ -81,7 +81,7 @@ func (r *HazelcastReconciler) withMemberStatuses(ctx context.Context, h *hazelca
 	readyMembers := "N/A"
 	cl, ok := r.clientRegistry.Get(types.NamespacedName{Name: h.Name, Namespace: h.Namespace})
 	if ok && cl.IsClientConnected() {
-		readyMembers = fmt.Sprintf("%d/%d", len(status.MemberDataMap), *h.Spec.ClusterSize)
+		readyMembers = fmt.Sprintf("%d/%d", len(status.MemberDataMap), *h.Spec.ClusterSize+h.Spec.LiteMember.GetCount())
 	}
 
 	var podErrors util.PodErrors
@@ -115,6 +115,14 @@ func (m memberStatuses) HzStatusApply(hs *hazelcastv1alpha1.HazelcastStatus) {
 
 	allMemberStatuses := append(readyFailedMembers, pendingMembers...)
 	hs.Members = allMemberStatuses
+
+	var lc int32
+	for _, s := range allMemberStatuses {
+		if s.Lite {
+			lc++
+		}
+	}
+	hs.LiteMemberCount = lc
 
 	if m.restoreState != (codecTypes.ClusterHotRestartStatus{}) {
 		hs.Restore = hazelcastv1alpha1.RestoreStatus{
@@ -195,14 +203,24 @@ func pendingMemberStatuses(pods []corev1.Pod) []hazelcastv1alpha1.HazelcastMembe
 }
 
 func hzMemberPods(ctx context.Context, c client.Client, h *hazelcastv1alpha1.Hazelcast) []corev1.Pod {
-	podList := &corev1.PodList{}
+	dataPods := &corev1.PodList{}
 	namespace := client.InNamespace(h.Namespace)
 	matchingLabels := client.MatchingLabels(util.Labels(h))
-	err := c.List(ctx, podList, namespace, matchingLabels)
-	if err != nil {
+	if err := c.List(ctx, dataPods, namespace, matchingLabels); err != nil {
 		return make([]corev1.Pod, 0)
 	}
-	return podList.Items
+
+	litePods := &corev1.PodList{}
+	matchingLabels = util.Labels(h)
+	if err := c.List(ctx, litePods, namespace, matchingLabels); err != nil {
+		return make([]corev1.Pod, 0)
+	}
+
+	var allPods []corev1.Pod
+	allPods = append(allPods, dataPods.Items...)
+	allPods = append(allPods, litePods.Items...)
+
+	return allPods
 }
 
 // update takes the options provided by the given optionsBuilder, applies them all and then updates the Hazelcast resource

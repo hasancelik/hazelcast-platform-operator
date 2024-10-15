@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	hztypes "github.com/hazelcast/hazelcast-go-client/types"
+
 	hzclient "github.com/hazelcast/hazelcast-platform-operator/internal/hazelcast-client"
 	codecTypes "github.com/hazelcast/hazelcast-platform-operator/internal/protocol/types"
 )
@@ -86,6 +87,7 @@ func (b *ClusterBackup) Members() []*MemberBackup {
 			statusService: b.statusService,
 			Address:       m.Address,
 			UUID:          uuid,
+			IsLiteMember:  m.LiteMember,
 		})
 	}
 	return mb
@@ -94,8 +96,9 @@ func (b *ClusterBackup) Members() []*MemberBackup {
 type MemberBackup struct {
 	statusService hzclient.StatusService
 
-	UUID    hztypes.UUID
-	Address string
+	UUID         hztypes.UUID
+	Address      string
+	IsLiteMember bool
 }
 
 var (

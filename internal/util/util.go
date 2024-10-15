@@ -215,11 +215,13 @@ func ListRelatedServices(ctx context.Context, cli client.Client, cr ExternalAddr
 }
 
 func Labels(cr ExternalAddresser) map[string]string {
-	return map[string]string{
+	m := map[string]string{
 		n.ApplicationNameLabel:         n.Hazelcast,
 		n.ApplicationInstanceNameLabel: cr.GetName(),
 		n.ApplicationManagedByLabel:    n.OperatorName,
 	}
+
+	return m
 }
 
 func GetExternalAddressesForMC(

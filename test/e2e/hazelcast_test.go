@@ -102,6 +102,17 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 				Expect(member.Ip).Should(Equal(pod.Status.PodIP))
 			}
 		})
+
+		It("should create a Hazelcast cluster with lite members", Tag(Kind|AnyCloud), func() {
+			setLabelAndCRName("h-5")
+			hz := hazelcastconfig.WithLiteMembers(hzLookupKey, labels, 2)
+			CreateHazelcastCR(hz)
+			evaluateReadyMembers(hzLookupKey)
+			assertMemberLogs(hz, "Members {size:5, ver:5}")
+			Expect(k8sClient.Get(context.Background(), hzLookupKey, hz)).ToNot(HaveOccurred())
+			Expect(hz.Status.ClusterSize).Should(Equal(int32(3)))
+			Expect(hz.Status.LiteMemberCount).Should(Equal(int32(2)))
+		})
 	})
 
 	Context("Handling errors", func() {
@@ -116,7 +127,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 		}
 
 		It("should reflect external API errors in Hazelcast CR status", Tag(Kind|AnyCloud), func() {
-			setLabelAndCRName("h-5")
+			setLabelAndCRName("h-6")
 			CreateHazelcastCRWithoutCheck(hazelcastconfig.Faulty(hzLookupKey, labels))
 			assertStatusAndMessageEventually(hazelcastcomv1alpha1.Failed)
 		})
@@ -124,7 +135,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 
 	Context("Cluster deletion", func() {
 		It("should delete dependent data structures and backups on Hazelcast CR deletion", Tag(Kind|AnyCloud), func() {
-			setLabelAndCRName("h-6")
+			setLabelAndCRName("h-7")
 			clusterSize := int32(3)
 
 			hz := hazelcastconfig.HazelcastPersistencePVC(hzLookupKey, clusterSize, labels)
@@ -159,7 +170,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 
 	Context("TLS Configuration", func() {
 		DescribeTable("should form a cluster with TLS configuration enabled", func(useCertChain bool) {
-			setLabelAndCRName("h-7")
+			setLabelAndCRName("h-8")
 			hz := hazelcastconfig.HazelcastTLS(hzLookupKey, labels)
 
 			tlsSecretNn := types.NamespacedName{
@@ -181,7 +192,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
 
 		DescribeTable("should support mutual TLS authentication in Hazelcast cluster", func(useCertChain bool) {
-			setLabelAndCRName("h-8")
+			setLabelAndCRName("h-9")
 			hz := hazelcastconfig.HazelcastMTLS(hzLookupKey, labels, false)
 
 			tlsSecretNn := types.NamespacedName{
@@ -203,7 +214,7 @@ var _ = Describe("Hazelcast", Group("hz"), func() {
 			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
 
 		DescribeTable("should form a cluster when mutual TLS authentication configured as optional", func(useCertChain bool) {
-			setLabelAndCRName("h-8")
+			setLabelAndCRName("h-10")
 			hz := hazelcastconfig.HazelcastMTLS(hzLookupKey, labels, true)
 
 			tlsSecretNn := types.NamespacedName{

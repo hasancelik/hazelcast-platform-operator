@@ -79,4 +79,12 @@ func (r *Hazelcast) defaultOptionalToNil() {
 	if r.Spec.ManagementCenterConfig != nil && reflect.DeepEqual(*r.Spec.ManagementCenterConfig, ManagementCenterConfig{}) {
 		r.Spec.ManagementCenterConfig = nil
 	}
+
+	if r.Spec.LiteMember != nil && r.Spec.LiteMember.Scheduling != nil && reflect.DeepEqual(*r.Spec.LiteMember.Scheduling, SchedulingConfiguration{}) {
+		r.Spec.LiteMember.Scheduling = nil
+	}
+	if r.Spec.LiteMember != nil && r.Spec.LiteMember.Resources != nil && reflect.DeepEqual(*r.Spec.LiteMember.Resources, corev1.ResourceRequirements{}) {
+		r.Spec.LiteMember.Resources = nil
+	}
+
 }

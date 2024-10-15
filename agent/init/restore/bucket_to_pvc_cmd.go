@@ -74,7 +74,11 @@ func (r *BucketToPVCCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...inte
 
 	// run download process
 	log.Info("Starting download:", zap.Int(r.Destination, id))
-	if err = downloadFromBucketToPvc(ctx, bucketURI, r.Destination, id, r.SecretName); err != nil {
+	isLite := false
+	if os.Getenv("HZ_LITEMEMBER_ENABLED") == "true" {
+		isLite = true
+	}
+	if err = downloadFromBucketToPvc(ctx, bucketURI, r.Destination, id, r.SecretName, isLite); err != nil {
 		log.Error("download error: " + err.Error())
 		return subcommands.ExitFailure
 	}
@@ -93,7 +97,7 @@ func (r *BucketToPVCCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...inte
 	return subcommands.ExitSuccess
 }
 
-func downloadFromBucketToPvc(ctx context.Context, src, dst string, id int, secretName string) error {
+func downloadFromBucketToPvc(ctx context.Context, src, dst string, id int, secretName string, isLite bool) error {
 	b, err := bucket.OpenBucket(ctx, src, secretName)
 	if err != nil {
 		return err
@@ -101,7 +105,7 @@ func downloadFromBucketToPvc(ctx context.Context, src, dst string, id int, secre
 	defer b.Close()
 
 	// find keys, they are sorted
-	keys, err := find(ctx, b)
+	keys, err := find(ctx, b, isLite)
 	if err != nil {
 		return err
 	}
