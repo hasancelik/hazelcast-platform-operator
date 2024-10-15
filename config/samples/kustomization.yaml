@@ -1,21 +1,21 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- _v1alpha1_hazelcast.yaml
-- _v1alpha1_managementcenter.yaml
-- _v1alpha1_map.yaml
-- _v1alpha1_wanreplication.yaml
-- _v1alpha1_multimap.yaml
-- _v1alpha1_hotbackup.yaml
-- _v1alpha1_cronhotbackup.yaml
-- _v1alpha1_topic.yaml
-- _v1alpha1_replicatedmap.yaml
-- _v1alpha1_queue.yaml
-- _v1alpha1_cache.yaml
-- _v1alpha1_jetjob.yaml
-- _v1alpha1_jetjobsnapshot.yaml
-- _v1alpha1_hazelcastendpoint.yaml
-- _v1alpha1_wansync.yaml
-- _v1alpha1_usercodenamespace.yaml
-- _v1alpha1_vectorcollection.yaml
+- v1alpha1_hazelcast.yaml
+- v1alpha1_managementcenter.yaml
+- v1alpha1_map.yaml
+- v1alpha1_wanreplication.yaml
+- v1alpha1_multimap.yaml
+- v1alpha1_hotbackup.yaml
+- v1alpha1_cronhotbackup.yaml
+- v1alpha1_topic.yaml
+- v1alpha1_replicatedmap.yaml
+- v1alpha1_queue.yaml
+- v1alpha1_cache.yaml
+- v1alpha1_jetjob.yaml
+- v1alpha1_jetjobsnapshot.yaml
+- v1alpha1_hazelcastendpoint.yaml
+- v1alpha1_wansync.yaml
+- v1alpha1_usercodenamespace.yaml
+- v1alpha1_vectorcollection.yaml
 - v1alpha1_flow.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
