@@ -529,11 +529,15 @@ assert_operator_pod_not_restarted(){
     fi
 }
 
+get_hetzner_ip_ranges() {
+  echo "108.62.0.0/16,135.181.0.0/16,136.243.0.0/16,144.76.0.0/16,148.251.0.0/16,172.241.0.0/16,178.63.0.0/16,188.40.0.0/16,5.9.0.0/16,95.216.0.0/16,95.217.0.0/16"
+}
+
 update_eks_security_group() {
   local AWS_REGION=$1
   local CLUSTER_NAME=$2
 
-  local HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | .[]')
+  local IP_RANGES=$(get_hetzner_ip_ranges | tr ',' '\n')
   local JSON_OUTPUT='{
     "IpPermissions": [
       {
@@ -544,7 +548,7 @@ update_eks_security_group() {
 
   while read -r CIDR; do
     JSON_OUTPUT+='{"CidrIp": "'$CIDR'"},'
-  done <<< "$HETZNER_IP_RANGES"
+  done <<< "$IP_RANGES"
 
   # Remove the last comma and close the JSON structure
   JSON_OUTPUT=${JSON_OUTPUT%,}
@@ -567,10 +571,9 @@ update_gke_firewall_rule() {
   local GCP_PROJECT_ID=$1
   local FIREWALL_RULE_NAME=$2
 
-  HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | join(",")')
-
+  IP_RANGES=$(get_hetzner_ip_ranges)
   gcloud compute firewall-rules update $FIREWALL_RULE_NAME \
-    --source-ranges=${HETZNER_IP_RANGES} \
+    --source-ranges=${IP_RANGES} \
     --project $GCP_PROJECT_ID
 
   echo "Firewall rule updated successfully with IP ranges for rule: $FIREWALL_RULE_NAME"
@@ -580,12 +583,12 @@ update_aks_nsg_rule() {
   local NRG_NAME=$1
   local NSG_NAME=$2
   local NSG_RULE_NAME=$3
-  HETZNER_IP_RANGES=$(curl -sL https://ip.guide/as24940 | jq -r '.routes.v4 | join("\",\"")')
+  local IP_RANGES=$(get_hetzner_ip_ranges | tr ',' ' ' | sed 's/ /","/g' | sed 's/^/"/;s/$/"/')
 
   az network nsg rule create \
     --name=$NSG_RULE_NAME \
     --nsg-name=${NSG_NAME} \
-    --source-address-prefixes="[\"$HETZNER_IP_RANGES\"]" \
+    --source-address-prefixes="[$IP_RANGES]" \
     --priority=101 \
     --resource-group=${NRG_NAME} \
     --access=Allow \
