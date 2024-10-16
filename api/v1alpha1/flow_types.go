@@ -17,12 +17,12 @@ type FlowSpec struct {
 	Size *int32 `json:"size,omitempty"`
 
 	// Repository to pull the Flow image from.
-	// +kubebuilder:default:="quay.io/hazelcast_cloud/hazelcast-flow-internal"
+	// +kubebuilder:default:="docker.io/hazelcast/hazelcast-flow"
 	// +optional
 	Repository string `json:"repository,omitempty"`
 
 	// Version of Flow.
-	// +kubebuilder:default:="next-v593"
+	// +kubebuilder:default:="5.5.0"
 	// +optional
 	Version string `json:"version,omitempty"`
 
