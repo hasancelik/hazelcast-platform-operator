@@ -157,8 +157,8 @@ var _ = Describe("Management-Center", Group("mc"), func() {
 
 			create(mc)
 		},
-			Entry("using single certificate", Tag(Kind|AnyCloud), false),
-			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+			Entry("using single certificate", Tag(AnyCloud), false),
+			Entry("using certificate chain", Tag(AnyCloud), true))
 
 		DescribeTable("should create MC resources when mutual TLS authentication configured as required", func(useCertChain bool) {
 			setLabelAndCRName("mc-6")
@@ -179,8 +179,8 @@ var _ = Describe("Management-Center", Group("mc"), func() {
 
 			create(mc)
 		},
-			Entry("using single certificate", Tag(Kind|AnyCloud), false),
-			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+			Entry("using single certificate", Tag(AnyCloud), false),
+			Entry("using certificate chain", Tag(AnyCloud), true))
 
 		DescribeTable("should create MC resources when mutual TLS authentication configured as optional", func(useCertChain bool) {
 			setLabelAndCRName("mc-6")
@@ -201,7 +201,7 @@ var _ = Describe("Management-Center", Group("mc"), func() {
 
 			create(mc)
 		},
-			Entry("using single certificate", Tag(Kind|AnyCloud), false),
-			Entry("using certificate chain", Tag(Kind|AnyCloud), true))
+			Entry("using single certificate", Tag(AnyCloud), false),
+			Entry("using certificate chain", Tag(AnyCloud), true))
 	})
 })
